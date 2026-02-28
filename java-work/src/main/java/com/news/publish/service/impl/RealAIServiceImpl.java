@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.news.publish.model.entity.AiConfig;
 import com.news.publish.service.AIService;
 import com.news.publish.service.AiConfigService;
+import com.news.publish.service.automation.InteractiveBrowserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpHeaders;
@@ -34,7 +35,7 @@ public class RealAIServiceImpl implements AIService {
 
     /** Spring 容器注入 —— 正常业务流程使用 */
     @org.springframework.beans.factory.annotation.Autowired
-    public RealAIServiceImpl(AiConfigService aiConfigService, org.springframework.context.annotation.Lazy InteractiveBrowserService interactiveBrowserService) {
+    public RealAIServiceImpl(AiConfigService aiConfigService, @org.springframework.context.annotation.Lazy InteractiveBrowserService interactiveBrowserService) {
         this.aiConfigService = aiConfigService;
         this.interactiveBrowserService = interactiveBrowserService;
         this.directConfig = null;

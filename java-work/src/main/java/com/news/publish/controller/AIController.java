@@ -68,4 +68,18 @@ public class AIController {
         String result = aiService.scrapeAndAnalyze(url, prompt);
         return Map.of("result", result);
     }
+
+    @GetMapping("/baijiahao-tasks")
+    public Map<String, String> getBaijiahaoTasks() {
+        String url = "https://baijiahao.baidu.com/builder/bjh-activity/taskSquare?aside=0";
+        String prompt = "请找出页面上百家号所有的热门任务/话题名称（如 #发现不一样的生活#），以及对应的参与人数或热度（如 6.5w人参与 或 热度100w ）。\n" +
+                "你必须严格将其提取为只包含话题数据的 JSON 对象数组。绝对不要包含任何多余文字，不要使用 ```json 这类的标记！\n" +
+                "JSON 数组的格式必须严格形如：\n" +
+                "[\n" +
+                "  {\"topic\": \"#A股大涨#\", \"participants\": \"6.5w人参与\"},\n" +
+                "  {\"topic\": \"#春日摄影大赛#\", \"participants\": \"12w人参与\"}\n" +
+                "]";
+        String result = aiService.scrapeAndAnalyze(url, prompt);
+        return Map.of("result", result);
+    }
 }

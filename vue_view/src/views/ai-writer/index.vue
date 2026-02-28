@@ -60,6 +60,27 @@
           </div>
         </div>
 
+        <div class="tasks-area" v-if="selectedNews">
+           <div class="tasks-header">
+              <span class="tasks-title">百家号流量任务加持</span>
+              <button class="btn btn-ghost btn-sm" :disabled="fetchingTasks" @click="handleFetchTasks">
+                 {{ fetchingTasks ? '🌐 启动探针抓取中...' : '🔥 智能获取实时任务' }}
+              </button>
+           </div>
+           <div class="tasks-list" v-if="tasks.length > 0">
+              <div 
+                 v-for="(task, idx) in tasks" 
+                 :key="idx"
+                 class="task-pill"
+                 :class="{ active: selectedTask?.topic === task.topic }"
+                 @click="selectedTask = selectedTask?.topic === task.topic ? null : task"
+              >
+                 <span class="topic">{{ task.topic }}</span>
+                 <span class="count">{{ task.participants }}</span>
+              </div>
+           </div>
+        </div>
+
         <div class="article-workspace" v-loading="creating">
           <div v-if="generatedContent" class="generated-result">
             <div class="result-header">
@@ -95,7 +116,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { fetchHotNews, generateArticle, matchImage, type HotNews } from '../../api/ai';
+import { fetchHotNews, generateArticle, matchImage, fetchBaijiahaoTasks, type HotNews } from '../../api/ai';
 import { ElMessage } from 'element-plus';
 
 const router = useRouter();
@@ -108,6 +129,34 @@ const selectedNews = ref<HotNews | null>(null);
 const generatedTitle = ref('');
 const generatedContent = ref('');
 const coverUrl = ref('');
+
+// 流量任务
+const tasks = ref<any[]>([]);
+const fetchingTasks = ref(false);
+const selectedTask = ref<any>(null);
+
+const handleFetchTasks = async () => {
+    fetchingTasks.value = true;
+    try {
+        const res = await fetchBaijiahaoTasks();
+        let parsed = [];
+        try {
+            // 清理可能包含的 Markdown 标记
+            let jsonStr = res.result.replace(/```json/g, '').replace(/```/g, '').trim();
+            parsed = JSON.parse(jsonStr);
+        } catch (e) {
+            console.error('JSON解析失败:', res.result);
+            ElMessage.error('AI 返回的任务格式异常，已在控制台输出');
+            return;
+        }
+        tasks.value = parsed;
+        ElMessage.success(`成功抓取 ${parsed.length} 个实时热点任务`);
+    } catch (err: any) {
+        ElMessage.error(err.response?.data?.message || err.message || '获取任务失败');
+    } finally {
+        fetchingTasks.value = false;
+    }
+};
 
 // 抓取新闻
 const handleFetchNews = async () => {
@@ -136,8 +185,14 @@ const handleGenerate = async () => {
   coverUrl.value = '';
   
   try {
+    // 附加流量任务上下文
+    let finalSummary = selectedNews.value.summary;
+    if (selectedTask.value) {
+        finalSummary += `\n\n【流量必带要求】：请务必在文章内容中自然地融入和讨论该热点话题：“${selectedTask.value.topic}”，以蹭取平台流量机制。`;
+    }
+
     // 1. 生成正文
-    const res = await generateArticle(selectedNews.value.title, selectedNews.value.summary);
+    const res = await generateArticle(selectedNews.value.title, finalSummary);
     
     // 强制清理 AI 返回的非标准 HTML 换行和空白幽灵段落
     let cleanHtml = res.content;
@@ -381,5 +436,67 @@ const handleToEditor = () => {
   border-radius: 20px;
   vertical-align: middle;
   margin-left: 10px;
+}
+
+.tasks-area {
+  padding: 15px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.tasks-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.tasks-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #fbbf24;
+}
+
+.tasks-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.task-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.task-pill:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.task-pill.active {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #3b82f6;
+  color: #60a5fa;
+}
+
+.task-pill .topic {
+  font-weight: 500;
+}
+
+.task-pill .count {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.task-pill.active .count {
+  color: rgba(96, 165, 250, 0.8);
 }
 </style>

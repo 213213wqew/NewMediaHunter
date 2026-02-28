@@ -39,3 +39,7 @@ export const polishArticle = (content: string): Promise<{ content: string }> => 
 export const suggestImages = (content: string): Promise<string[]> => {
     return request.post('/ai/suggest-images', { content });
 };
+
+export const fetchBaijiahaoTasks = (): Promise<{ result: string }> => {
+    return request.get('/ai/baijiahao-tasks');
+};
