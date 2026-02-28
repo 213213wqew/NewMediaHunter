@@ -1,0 +1,630 @@
+﻿[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------------< com.news:publish-center >-----------------------
+[INFO] Building news-publish-center 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ publish-center ---
+[INFO] Deleting E:\java-Project\新闻发布程序\java-work\target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ publish-center ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ publish-center ---
+[INFO] Changes detected - recompiling the module! :source
+[INFO] Compiling 40 source files with javac [debug release 17] to target\classes
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[10,35] 无法访问com.news.publish.repository.PublishTaskRepository
+  错误的源文件: E:\java-Project\新闻发布程序\java-work\src\main\java\com\news\publish\repository\PublishTaskRepository.java
+    文件不包含类com.news.publish.repository.PublishTaskRepository
+    请删除该文件或确保该文件位于正确的源路径子目录中。
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/PublishCenterApplication.java:[9,2] 找不到符号
+  符号: 类 SpringBootApplication
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/repository/PublishTaskRepository.java:[7,8] 类重复: PublishTaskRepository
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[34,19] 找不到符号
+  符号:   类 PublishTaskRepository
+  位置: 类 com.news.publish.service.impl.PublishServiceImpl
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/netease/NeteaseAdapter.java:[23,9] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.adapter.impl.netease.NeteaseAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/netease/NeteaseAdapter.java:[23,43] 找不到符号
+  符号:   方法 getTitle()
+  位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/netease/NeteaseAdapter.java:[24,13] 找不到符号
+  符号:   方法 setPlatformArticleId(java.lang.String)
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/netease/NeteaseAdapter.java:[25,72] 找不到符号
+  符号:   方法 getPlatformArticleId()
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/netease/NeteaseAdapter.java:[30,9] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.adapter.impl.netease.NeteaseAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/netease/NeteaseAdapter.java:[30,48] 找不到符号
+  符号:   方法 getId()
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/netease/NeteaseAdapter.java:[35,9] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.adapter.impl.netease.NeteaseAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/netease/NeteaseAdapter.java:[41,9] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.adapter.impl.netease.NeteaseAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/netease/NeteaseAdapter.java:[41,50] 找不到符号
+  符号:   方法 getTitle()
+  位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/netease/NeteaseAdapter.java:[42,13] 找不到符号
+  符号:   方法 setPlatformArticleId(java.lang.String)
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/netease/NeteaseAdapter.java:[43,66] 找不到符号
+  符号:   方法 getPlatformArticleId()
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[23,9] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.adapter.impl.toutiao.ToutiaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[23,50] 找不到符号
+  符号:   方法 getAccountName()
+  位置: 类型为com.news.publish.model.entity.Account的变量 account
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[23,76] 找不到符号
+  符号:   方法 getTitle()
+  位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[24,9] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.adapter.impl.toutiao.ToutiaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[28,13] 找不到符号
+  符号:   方法 setPlatformArticleId(java.lang.String)
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[29,70] 找不到符号
+  符号:   方法 getPlatformArticleId()
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[34,9] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.adapter.impl.toutiao.ToutiaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[34,48] 找不到符号
+  符号:   方法 getId()
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[39,9] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.adapter.impl.toutiao.ToutiaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[45,9] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.adapter.impl.toutiao.ToutiaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[45,50] 找不到符号
+  符号:   方法 getTitle()
+  位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[46,13] 找不到符号
+  符号:   方法 setPlatformArticleId(java.lang.String)
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[47,70] 找不到符号
+  符号:   方法 getPlatformArticleId()
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/sohu/SohuAdapter.java:[23,9] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.adapter.impl.sohu.SohuAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/sohu/SohuAdapter.java:[23,43] 找不到符号
+  符号:   方法 getTitle()
+  位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/sohu/SohuAdapter.java:[24,13] 找不到符号
+  符号:   方法 setPlatformArticleId(java.lang.String)
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/sohu/SohuAdapter.java:[25,66] 找不到符号
+  符号:   方法 getPlatformArticleId()
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/sohu/SohuAdapter.java:[30,9] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.adapter.impl.sohu.SohuAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/sohu/SohuAdapter.java:[30,48] 找不到符号
+  符号:   方法 getId()
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/sohu/SohuAdapter.java:[35,9] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.adapter.impl.sohu.SohuAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/sohu/SohuAdapter.java:[41,9] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.adapter.impl.sohu.SohuAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/sohu/SohuAdapter.java:[41,50] 找不到符号
+  符号:   方法 getTitle()
+  位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/sohu/SohuAdapter.java:[42,13] 找不到符号
+  符号:   方法 setPlatformArticleId(java.lang.String)
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/sohu/SohuAdapter.java:[43,64] 找不到符号
+  符号:   方法 getPlatformArticleId()
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[23,9] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.adapter.impl.qiehao.QiehaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[23,50] 找不到符号
+  符号:   方法 getAccountName()
+  位置: 类型为com.news.publish.model.entity.Account的变量 account
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[23,76] 找不到符号
+  符号:   方法 getTitle()
+  位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[24,9] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.adapter.impl.qiehao.QiehaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[28,13] 找不到符号
+  符号:   方法 setPlatformArticleId(java.lang.String)
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[29,70] 找不到符号
+  符号:   方法 getPlatformArticleId()
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[34,9] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.adapter.impl.qiehao.QiehaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[34,48] 找不到符号
+  符号:   方法 getId()
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[39,9] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.adapter.impl.qiehao.QiehaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[45,9] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.adapter.impl.qiehao.QiehaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[45,50] 找不到符号
+  符号:   方法 getTitle()
+  位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[46,13] 找不到符号
+  符号:   方法 setPlatformArticleId(java.lang.String)
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[47,69] 找不到符号
+  符号:   方法 getPlatformArticleId()
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/dayuhao/DayuhaoAdapter.java:[23,9] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.adapter.impl.dayuhao.DayuhaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/dayuhao/DayuhaoAdapter.java:[23,43] 找不到符号
+  符号:   方法 getTitle()
+  位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/dayuhao/DayuhaoAdapter.java:[24,13] 找不到符号
+  符号:   方法 setPlatformArticleId(java.lang.String)
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/dayuhao/DayuhaoAdapter.java:[25,61] 找不到符号
+  符号:   方法 getPlatformArticleId()
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/dayuhao/DayuhaoAdapter.java:[30,9] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.adapter.impl.dayuhao.DayuhaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/dayuhao/DayuhaoAdapter.java:[30,48] 找不到符号
+  符号:   方法 getId()
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/dayuhao/DayuhaoAdapter.java:[35,9] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.adapter.impl.dayuhao.DayuhaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/dayuhao/DayuhaoAdapter.java:[41,9] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.adapter.impl.dayuhao.DayuhaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/dayuhao/DayuhaoAdapter.java:[41,50] 找不到符号
+  符号:   方法 getTitle()
+  位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/dayuhao/DayuhaoAdapter.java:[42,13] 找不到符号
+  符号:   方法 setPlatformArticleId(java.lang.String)
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/dayuhao/DayuhaoAdapter.java:[43,61] 找不到符号
+  符号:   方法 getPlatformArticleId()
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[45,13] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.impl.PublishServiceImpl
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[46,61] 找不到符号
+  符号:   方法 getId()
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[53,61] 找不到符号
+  符号:   方法 getArticleId()
+  位置: 类型为com.news.publish.model.dto.PublishRequest的变量 request
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[57,38] 找不到符号
+  符号:   方法 getAccountIds()
+  位置: 类型为com.news.publish.model.dto.PublishRequest的变量 request
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[59,38] 找不到符号
+  符号:   方法 getId()
+  位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[60,17] 找不到符号
+  符号:   方法 setAccountId(java.lang.Long)
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[61,17] 找不到符号
+  符号:   方法 setPublishStatus(int)
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[62,42] 找不到符号
+  符号:   方法 getScheduledTime()
+  位置: 类型为com.news.publish.model.dto.PublishRequest的变量 request
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[65,24] 找不到符号
+  符号:   方法 getScheduledTime()
+  位置: 类型为com.news.publish.model.dto.PublishRequest的变量 request
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[65,62] 找不到符号
+  符号:   方法 getScheduledTime()
+  位置: 类型为com.news.publish.model.dto.PublishRequest的变量 request
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[66,40] 找不到符号
+  符号:   方法 getId()
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[79,17] 找不到符号
+  符号:   方法 setPublishStatus(int)
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[82,62] 找不到符号
+  符号:   方法 getArticleId()
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[83,62] 找不到符号
+  符号:   方法 getAccountId()
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[90,69] 找不到符号
+  符号:   方法 getPlatformId()
+  位置: 类型为com.news.publish.model.entity.Account的变量 account
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[99,13] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.impl.PublishServiceImpl
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[100,41] 找不到符号
+  符号:   方法 getAccountName()
+  位置: 类型为com.news.publish.model.entity.Account的变量 account
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[100,67] 找不到符号
+  符号:   方法 getTitle()
+  位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[105,17] 找不到符号
+  符号:   方法 setPublishStatus(int)
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[109,13] 找不到符号
+  符号:   变量 log
+  位置: 类 com.news.publish.service.impl.PublishServiceImpl
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[110,17] 找不到符号
+  符号:   方法 setPublishStatus(int)
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[111,17] 找不到符号
+  符号:   方法 setErrorMessage(java.lang.String)
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[128,14] 找不到符号
+  符号:   方法 setTotalAccounts(long)
+  位置: 类型为com.news.publish.model.dto.PublishStats的变量 stats
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[129,14] 找不到符号
+  符号:   方法 setTotalArticles(long)
+  位置: 类型为com.news.publish.model.dto.PublishStats的变量 stats
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[130,14] 找不到符号
+  符号:   方法 setTotalTasks(int)
+  位置: 类型为com.news.publish.model.dto.PublishStats的变量 stats
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[133,64] 找不到符号
+  符号:   方法 getPublishStatus()
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 t
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[134,18] 找不到符号
+  符号:   方法 setSuccessRate(double)
+  位置: 类型为com.news.publish.model.dto.PublishStats的变量 stats
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[136,18] 找不到符号
+  符号:   方法 setSuccessRate(double)
+  位置: 类型为com.news.publish.model.dto.PublishStats的变量 stats
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[146,21] 找不到符号
+  符号:   方法 getCreateTime()
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[147,35] 找不到符号
+  符号:   方法 getCreateTime()
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[156,14] 找不到符号
+  符号:   方法 setSeriesData(java.util.List<com.news.publish.model.dto.PublishStats.ChartData>)
+  位置: 类型为com.news.publish.model.dto.PublishStats的变量 stats
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[160,59] 找不到符号
+  符号:   方法 getAccountId()
+  位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[161,34] 方法引用无效
+  找不到符号
+    符号:   方法 getPlatformId()
+    位置: 类 com.news.publish.model.entity.Account
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[168,32] 找不到符号
+  符号:   方法 getPlatformName()
+  位置: 类型为com.news.publish.model.entity.Platform的变量 p
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[169,28] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[172,14] 找不到符号
+  符号:   方法 setPlatformData(java.util.List<com.news.publish.model.dto.PublishStats.ChartData>)
+  位置: 类型为com.news.publish.model.dto.PublishStats的变量 stats
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/ComplianceService.java:[26,33] 找不到符号
+  符号:   方法 getContent()
+  位置: 类型为com.news.publish.model.entity.Article的变量 article
+[INFO] 100 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  1.859 s
+[INFO] Finished at: 2026-02-22T16:17:13+08:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project publish-center: Compilation failure: Compilation failure: 
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[10,35] 无法访问com.news.publish.repository.PublishTaskRepository
+[ERROR]   错误的源文件: E:\java-Project\新闻发布程序\java-work\src\main\java\com\news\publish\repository\PublishTaskRepository.java
+[ERROR]     文件不包含类com.news.publish.repository.PublishTaskRepository
+[ERROR]     请删除该文件或确保该文件位于正确的源路径子目录中。
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/PublishCenterApplication.java:[9,2] 找不到符号
+[ERROR]   符号: 类 SpringBootApplication
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/repository/PublishTaskRepository.java:[7,8] 类重复: PublishTaskRepository
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[34,19] 找不到符号
+[ERROR]   符号:   类 PublishTaskRepository
+[ERROR]   位置: 类 com.news.publish.service.impl.PublishServiceImpl
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/netease/NeteaseAdapter.java:[23,9] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.adapter.impl.netease.NeteaseAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/netease/NeteaseAdapter.java:[23,43] 找不到符号
+[ERROR]   符号:   方法 getTitle()
+[ERROR]   位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/netease/NeteaseAdapter.java:[24,13] 找不到符号
+[ERROR]   符号:   方法 setPlatformArticleId(java.lang.String)
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/netease/NeteaseAdapter.java:[25,72] 找不到符号
+[ERROR]   符号:   方法 getPlatformArticleId()
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/netease/NeteaseAdapter.java:[30,9] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.adapter.impl.netease.NeteaseAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/netease/NeteaseAdapter.java:[30,48] 找不到符号
+[ERROR]   符号:   方法 getId()
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/netease/NeteaseAdapter.java:[35,9] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.adapter.impl.netease.NeteaseAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/netease/NeteaseAdapter.java:[41,9] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.adapter.impl.netease.NeteaseAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/netease/NeteaseAdapter.java:[41,50] 找不到符号
+[ERROR]   符号:   方法 getTitle()
+[ERROR]   位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/netease/NeteaseAdapter.java:[42,13] 找不到符号
+[ERROR]   符号:   方法 setPlatformArticleId(java.lang.String)
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/netease/NeteaseAdapter.java:[43,66] 找不到符号
+[ERROR]   符号:   方法 getPlatformArticleId()
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[23,9] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.adapter.impl.toutiao.ToutiaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[23,50] 找不到符号
+[ERROR]   符号:   方法 getAccountName()
+[ERROR]   位置: 类型为com.news.publish.model.entity.Account的变量 account
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[23,76] 找不到符号
+[ERROR]   符号:   方法 getTitle()
+[ERROR]   位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[24,9] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.adapter.impl.toutiao.ToutiaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[28,13] 找不到符号
+[ERROR]   符号:   方法 setPlatformArticleId(java.lang.String)
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[29,70] 找不到符号
+[ERROR]   符号:   方法 getPlatformArticleId()
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[34,9] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.adapter.impl.toutiao.ToutiaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[34,48] 找不到符号
+[ERROR]   符号:   方法 getId()
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[39,9] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.adapter.impl.toutiao.ToutiaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[45,9] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.adapter.impl.toutiao.ToutiaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[45,50] 找不到符号
+[ERROR]   符号:   方法 getTitle()
+[ERROR]   位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[46,13] 找不到符号
+[ERROR]   符号:   方法 setPlatformArticleId(java.lang.String)
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/toutiao/ToutiaoAdapter.java:[47,70] 找不到符号
+[ERROR]   符号:   方法 getPlatformArticleId()
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/sohu/SohuAdapter.java:[23,9] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.adapter.impl.sohu.SohuAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/sohu/SohuAdapter.java:[23,43] 找不到符号
+[ERROR]   符号:   方法 getTitle()
+[ERROR]   位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/sohu/SohuAdapter.java:[24,13] 找不到符号
+[ERROR]   符号:   方法 setPlatformArticleId(java.lang.String)
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/sohu/SohuAdapter.java:[25,66] 找不到符号
+[ERROR]   符号:   方法 getPlatformArticleId()
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/sohu/SohuAdapter.java:[30,9] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.adapter.impl.sohu.SohuAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/sohu/SohuAdapter.java:[30,48] 找不到符号
+[ERROR]   符号:   方法 getId()
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/sohu/SohuAdapter.java:[35,9] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.adapter.impl.sohu.SohuAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/sohu/SohuAdapter.java:[41,9] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.adapter.impl.sohu.SohuAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/sohu/SohuAdapter.java:[41,50] 找不到符号
+[ERROR]   符号:   方法 getTitle()
+[ERROR]   位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/sohu/SohuAdapter.java:[42,13] 找不到符号
+[ERROR]   符号:   方法 setPlatformArticleId(java.lang.String)
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/sohu/SohuAdapter.java:[43,64] 找不到符号
+[ERROR]   符号:   方法 getPlatformArticleId()
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[23,9] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.adapter.impl.qiehao.QiehaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[23,50] 找不到符号
+[ERROR]   符号:   方法 getAccountName()
+[ERROR]   位置: 类型为com.news.publish.model.entity.Account的变量 account
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[23,76] 找不到符号
+[ERROR]   符号:   方法 getTitle()
+[ERROR]   位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[24,9] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.adapter.impl.qiehao.QiehaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[28,13] 找不到符号
+[ERROR]   符号:   方法 setPlatformArticleId(java.lang.String)
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[29,70] 找不到符号
+[ERROR]   符号:   方法 getPlatformArticleId()
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[34,9] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.adapter.impl.qiehao.QiehaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[34,48] 找不到符号
+[ERROR]   符号:   方法 getId()
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[39,9] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.adapter.impl.qiehao.QiehaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[45,9] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.adapter.impl.qiehao.QiehaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[45,50] 找不到符号
+[ERROR]   符号:   方法 getTitle()
+[ERROR]   位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[46,13] 找不到符号
+[ERROR]   符号:   方法 setPlatformArticleId(java.lang.String)
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/qiehao/QiehaoAdapter.java:[47,69] 找不到符号
+[ERROR]   符号:   方法 getPlatformArticleId()
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/dayuhao/DayuhaoAdapter.java:[23,9] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.adapter.impl.dayuhao.DayuhaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/dayuhao/DayuhaoAdapter.java:[23,43] 找不到符号
+[ERROR]   符号:   方法 getTitle()
+[ERROR]   位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/dayuhao/DayuhaoAdapter.java:[24,13] 找不到符号
+[ERROR]   符号:   方法 setPlatformArticleId(java.lang.String)
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/dayuhao/DayuhaoAdapter.java:[25,61] 找不到符号
+[ERROR]   符号:   方法 getPlatformArticleId()
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/dayuhao/DayuhaoAdapter.java:[30,9] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.adapter.impl.dayuhao.DayuhaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/dayuhao/DayuhaoAdapter.java:[30,48] 找不到符号
+[ERROR]   符号:   方法 getId()
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/dayuhao/DayuhaoAdapter.java:[35,9] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.adapter.impl.dayuhao.DayuhaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/dayuhao/DayuhaoAdapter.java:[41,9] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.adapter.impl.dayuhao.DayuhaoAdapter
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/dayuhao/DayuhaoAdapter.java:[41,50] 找不到符号
+[ERROR]   符号:   方法 getTitle()
+[ERROR]   位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/dayuhao/DayuhaoAdapter.java:[42,13] 找不到符号
+[ERROR]   符号:   方法 setPlatformArticleId(java.lang.String)
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/adapter/impl/dayuhao/DayuhaoAdapter.java:[43,61] 找不到符号
+[ERROR]   符号:   方法 getPlatformArticleId()
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[45,13] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.impl.PublishServiceImpl
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[46,61] 找不到符号
+[ERROR]   符号:   方法 getId()
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[53,61] 找不到符号
+[ERROR]   符号:   方法 getArticleId()
+[ERROR]   位置: 类型为com.news.publish.model.dto.PublishRequest的变量 request
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[57,38] 找不到符号
+[ERROR]   符号:   方法 getAccountIds()
+[ERROR]   位置: 类型为com.news.publish.model.dto.PublishRequest的变量 request
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[59,38] 找不到符号
+[ERROR]   符号:   方法 getId()
+[ERROR]   位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[60,17] 找不到符号
+[ERROR]   符号:   方法 setAccountId(java.lang.Long)
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[61,17] 找不到符号
+[ERROR]   符号:   方法 setPublishStatus(int)
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[62,42] 找不到符号
+[ERROR]   符号:   方法 getScheduledTime()
+[ERROR]   位置: 类型为com.news.publish.model.dto.PublishRequest的变量 request
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[65,24] 找不到符号
+[ERROR]   符号:   方法 getScheduledTime()
+[ERROR]   位置: 类型为com.news.publish.model.dto.PublishRequest的变量 request
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[65,62] 找不到符号
+[ERROR]   符号:   方法 getScheduledTime()
+[ERROR]   位置: 类型为com.news.publish.model.dto.PublishRequest的变量 request
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[66,40] 找不到符号
+[ERROR]   符号:   方法 getId()
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[79,17] 找不到符号
+[ERROR]   符号:   方法 setPublishStatus(int)
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[82,62] 找不到符号
+[ERROR]   符号:   方法 getArticleId()
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[83,62] 找不到符号
+[ERROR]   符号:   方法 getAccountId()
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[90,69] 找不到符号
+[ERROR]   符号:   方法 getPlatformId()
+[ERROR]   位置: 类型为com.news.publish.model.entity.Account的变量 account
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[99,13] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.impl.PublishServiceImpl
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[100,41] 找不到符号
+[ERROR]   符号:   方法 getAccountName()
+[ERROR]   位置: 类型为com.news.publish.model.entity.Account的变量 account
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[100,67] 找不到符号
+[ERROR]   符号:   方法 getTitle()
+[ERROR]   位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[105,17] 找不到符号
+[ERROR]   符号:   方法 setPublishStatus(int)
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[109,13] 找不到符号
+[ERROR]   符号:   变量 log
+[ERROR]   位置: 类 com.news.publish.service.impl.PublishServiceImpl
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[110,17] 找不到符号
+[ERROR]   符号:   方法 setPublishStatus(int)
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[111,17] 找不到符号
+[ERROR]   符号:   方法 setErrorMessage(java.lang.String)
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[128,14] 找不到符号
+[ERROR]   符号:   方法 setTotalAccounts(long)
+[ERROR]   位置: 类型为com.news.publish.model.dto.PublishStats的变量 stats
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[129,14] 找不到符号
+[ERROR]   符号:   方法 setTotalArticles(long)
+[ERROR]   位置: 类型为com.news.publish.model.dto.PublishStats的变量 stats
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[130,14] 找不到符号
+[ERROR]   符号:   方法 setTotalTasks(int)
+[ERROR]   位置: 类型为com.news.publish.model.dto.PublishStats的变量 stats
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[133,64] 找不到符号
+[ERROR]   符号:   方法 getPublishStatus()
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 t
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[134,18] 找不到符号
+[ERROR]   符号:   方法 setSuccessRate(double)
+[ERROR]   位置: 类型为com.news.publish.model.dto.PublishStats的变量 stats
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[136,18] 找不到符号
+[ERROR]   符号:   方法 setSuccessRate(double)
+[ERROR]   位置: 类型为com.news.publish.model.dto.PublishStats的变量 stats
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[146,21] 找不到符号
+[ERROR]   符号:   方法 getCreateTime()
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[147,35] 找不到符号
+[ERROR]   符号:   方法 getCreateTime()
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[156,14] 找不到符号
+[ERROR]   符号:   方法 setSeriesData(java.util.List<com.news.publish.model.dto.PublishStats.ChartData>)
+[ERROR]   位置: 类型为com.news.publish.model.dto.PublishStats的变量 stats
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[160,59] 找不到符号
+[ERROR]   符号:   方法 getAccountId()
+[ERROR]   位置: 类型为com.news.publish.model.entity.PublishTask的变量 task
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[161,34] 方法引用无效
+[ERROR]   找不到符号
+[ERROR]     符号:   方法 getPlatformId()
+[ERROR]     位置: 类 com.news.publish.model.entity.Account
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[168,32] 找不到符号
+[ERROR]   符号:   方法 getPlatformName()
+[ERROR]   位置: 类型为com.news.publish.model.entity.Platform的变量 p
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[169,28] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/impl/PublishServiceImpl.java:[172,14] 找不到符号
+[ERROR]   符号:   方法 setPlatformData(java.util.List<com.news.publish.model.dto.PublishStats.ChartData>)
+[ERROR]   位置: 类型为com.news.publish.model.dto.PublishStats的变量 stats
+[ERROR] /E:/java-Project/新闻发布程序/java-work/src/main/java/com/news/publish/service/ComplianceService.java:[26,33] 找不到符号
+[ERROR]   符号:   方法 getContent()
+[ERROR]   位置: 类型为com.news.publish.model.entity.Article的变量 article
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
