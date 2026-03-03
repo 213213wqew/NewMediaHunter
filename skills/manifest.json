@@ -1,0 +1,11 @@
+{
+    "id": "master_agent_system",
+    "name": "多平台自动化代理系统 (Master-Sub)",
+    "version": "2.0.0",
+    "description": "基于 Python Master-Sub 架构的独立代理系统，支持账号 Session 持久化与逻辑解耦。",
+    "capabilities": [
+        "PUBLISH",
+        "SYNC_HOT_TOPICS",
+        "LOGIN_CHECK"
+    ]
+}

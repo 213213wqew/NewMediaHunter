@@ -1,0 +1,7 @@
+{
+    "command": "PUBLISH",
+    "platform": "baijiahao",
+    "title": "Agent 执行测试文章",
+    "htmlContent": "这是一篇由独立 Agent 自动化生成的测试正文内容。",
+    "accountId": "test_acc_01"
+}

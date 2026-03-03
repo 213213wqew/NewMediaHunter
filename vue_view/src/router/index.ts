@@ -18,12 +18,20 @@ const routes: RouteRecordRaw[] = [
         component: () => import('../views/account/index.vue'),
     },
     {
+        path: '/channel',
+        component: () => import('../views/channel/index.vue'),
+    },
+    {
         path: '/media',
         component: () => import('../views/media/index.vue'),
     },
     {
         path: '/hot-news',
         component: () => import('../views/hot-news/index.vue'),
+    },
+    {
+        path: '/video',
+        component: () => import('../views/video/index.vue'),
     },
     {
         path: '/task',

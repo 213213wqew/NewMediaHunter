@@ -42,6 +42,11 @@ public class AiConfig {
     @Column(nullable = false, unique = true)
     private Long userId;
 
+    /**
+     * 启用 AI 绘图（重要：开启后 DALL-E 3 等模型将产生 API 费用）
+     */
+    private Boolean enableAiImage = false;
+
     private LocalDateTime updateTime;
 
     @PrePersist

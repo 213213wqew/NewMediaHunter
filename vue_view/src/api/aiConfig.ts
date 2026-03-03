@@ -5,6 +5,7 @@ export interface AiConfigData {
     baseUrl: string;
     apiKey: string;
     modelName: string;
+    enableAiImage?: boolean;
 }
 
 /**

@@ -116,7 +116,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { fetchHotNews, generateArticle, matchImage, fetchBaijiahaoTasks, type HotNews } from '../../api/ai';
+import { fetchHotNews, fetchArticleContent, generateArticle, matchImage, polishArticle, suggestImages, getPlatformTasks, matchHotTopics, type HotNews } from '../../api/ai';
 import { ElMessage } from 'element-plus';
 
 const router = useRouter();
@@ -138,19 +138,13 @@ const selectedTask = ref<any>(null);
 const handleFetchTasks = async () => {
     fetchingTasks.value = true;
     try {
-        const res = await fetchBaijiahaoTasks();
-        let parsed = [];
-        try {
-            // 清理可能包含的 Markdown 标记
-            let jsonStr = res.result.replace(/```json/g, '').replace(/```/g, '').trim();
-            parsed = JSON.parse(jsonStr);
-        } catch (e) {
-            console.error('JSON解析失败:', res.result);
-            ElMessage.error('AI 返回的任务格式异常，已在控制台输出');
-            return;
+        const res = await getPlatformTasks('bjh');
+        tasks.value = res;
+        if (res.length > 0) {
+            ElMessage.success(`成功加载 ${res.length} 个本地缓存热点任务`);
+        } else {
+            ElMessage.warning('本地任务池为空，请先在分发渠道中进行同步');
         }
-        tasks.value = parsed;
-        ElMessage.success(`成功抓取 ${parsed.length} 个实时热点任务`);
     } catch (err: any) {
         ElMessage.error(err.response?.data?.message || err.message || '获取任务失败');
     } finally {
@@ -231,6 +225,7 @@ const handleToEditor = () => {
   localStorage.setItem('pending_article_title', generatedTitle.value);
   localStorage.setItem('pending_article_content', generatedContent.value);
   localStorage.setItem('pending_article_cover', coverUrl.value);
+  localStorage.setItem('pending_article_tags', selectedTask.value ? selectedTask.value.topic : '');
   router.push('/article');
 };
 </script>

@@ -1,7 +1,8 @@
 package com.news.publish.controller;
 
 import com.news.publish.service.automation.InteractiveBrowserService;
-import com.news.publish.service.automation.skill.BaijiahaoPublishSkill;
+import com.news.publish.service.automation.SkillDiscoveryService;
+import com.news.publish.service.automation.PythonSkillRunner;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -14,7 +15,8 @@ import java.util.Map;
 public class AutomationController {
 
     private final InteractiveBrowserService interactiveBrowserService;
-    private final BaijiahaoPublishSkill baijiahaoPublishSkill;
+    private final SkillDiscoveryService skillDiscoveryService;
+    private final PythonSkillRunner pythonSkillRunner;
 
     /**
      * 开启一个发布会话
@@ -53,19 +55,31 @@ public class AutomationController {
     }
 
     /**
-     * 百家号图文自动发布 (Skill 调用)
+     * 获取所有可用的独立技能
      */
-    @PostMapping("/publish/baijiahao")
-    public Result publishBaijiahao(@RequestBody BaijiahaoPublishRequest request) {
-        BaijiahaoPublishSkill.PublishParams params = new BaijiahaoPublishSkill.PublishParams();
-        params.setTitle(request.getTitle());
-        params.setHtmlContent(request.getHtmlContent());
-        params.setCategory(request.getCategory());
-        params.setCookieJson(request.getCookieJson());
-        params.setDraft(request.isDraft());
+    @GetMapping("/skills")
+    public Result getSkills() {
+        return Result.success(skillDiscoveryService.getAvailableSkills());
+    }
+
+    /**
+     * 刷新技能目录
+     */
+    @PostMapping("/skills/refresh")
+    public Result refreshSkills() {
+        skillDiscoveryService.refreshSkills();
+        return Result.success();
+    }
+
+    /**
+     * 执行指定的独立 Python 技能
+     */
+    @PostMapping("/skills/execute/{skillId}")
+    public Result executeSkill(@PathVariable String skillId, @RequestBody Map<String, Object> params) {
+        SkillDiscoveryService.SkillMetadata meta = skillDiscoveryService.getSkill(skillId);
+        if (meta == null) return Result.error("技能不存在: " + skillId);
         
-        BaijiahaoPublishSkill.PublishResult result = baijiahaoPublishSkill.execute(params);
-        
+        PythonSkillRunner.SkillExecutionResult result = pythonSkillRunner.execute(meta, params);
         if (result.isSuccess()) {
             return Result.success(result);
         } else {

@@ -97,6 +97,26 @@
               @click="form.modelName = m; modelSearch = ''">{{ m }}</span>
           </div>
         </div>
+
+        <!-- AI 绘图功能开关（付费提醒） -->
+        <div class="form-group full-width" style="margin-top: 10px;">
+          <div class="setting-item-row">
+            <div>
+              <div class="form-label" style="display: flex; align-items: center; gap: 6px;">
+                🎨 启用 AI 高清重绘 (Premium)
+                <span class="badge badge-warning" style="font-size: 10px; padding: 2px 6px;">付费功能</span>
+              </div>
+              <div class="form-hint">
+                开启后，一键创作将使用 DALL-E 3 为您生成**原创、高清、无水印**的配图。<br/>
+                <span style="color: #ff9500;">⚠️ 注意：</span> 该功能会按张扣除您的 API 额度（每张约 0.4-0.8 元）。
+              </div>
+            </div>
+            <el-switch v-model="form.enableAiImage" active-color="#007aff" />
+          </div>
+          <div v-if="!form.enableAiImage" class="form-hint" style="margin-top: 4px; color: #34c759;">
+            💡 当前模式：<b>免费匹配</b> (使用 Unsplash 免费图库，无 API 消耗)。
+          </div>
+        </div>
       </div>
     </div>
 
@@ -174,7 +194,7 @@ const domesticProviders = [
 
 const allProviders = [...internationalProviders, ...domesticProviders];
 
-const form = ref({ provider: 'deepseek', baseUrl: 'https://api.deepseek.com/v1', apiKey: '', modelName: 'deepseek-chat' });
+const form = ref({ provider: 'deepseek', baseUrl: 'https://api.deepseek.com/v1', apiKey: '', modelName: 'deepseek-chat', enableAiImage: false });
 const showKey = ref(false);
 const testing = ref(false);
 const saving = ref(false);
@@ -240,7 +260,7 @@ const handleFetchModels = async () => {
     } else {
       ElMessage.success(`获取到 ${fetchedModels.value.length} 个可用模型，请在框内搜索选择`);
       const defaultM = currentProvider.value?.defaultModel;
-      form.value.modelName = (defaultM && fetchedModels.value.includes(defaultM)) ? defaultM : fetchedModels.value[0];
+      form.value.modelName = (defaultM && fetchedModels.value.includes(defaultM)) ? defaultM : (fetchedModels.value[0] || '');
       modelDropOpen.value = true;
     }
   } catch (e: any) {
@@ -287,6 +307,7 @@ onMounted(async () => {
       form.value.baseUrl = cfg.baseUrl || '';
       form.value.apiKey = cfg.apiKey || '';
       form.value.modelName = cfg.modelName || '';
+      form.value.enableAiImage = cfg.enableAiImage || false;
       savedProvider.value = allProviders.find(p => p.id === cfg.provider)?.name || cfg.provider || '';
     }
   } catch (_) {}
@@ -299,6 +320,8 @@ onUnmounted(() => {
 
 <style scoped>
 .group-label { font-size: 12px; font-weight: 600; color: var(--text-muted); margin-top: 12px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+.setting-item-row { display: flex; justify-content: space-between; align-items: flex-start; background: rgba(255,255,255,0.03); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); }
 
 .provider-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
 .provider-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px 10px; cursor: pointer; text-align: center; transition: all 0.2s ease; }

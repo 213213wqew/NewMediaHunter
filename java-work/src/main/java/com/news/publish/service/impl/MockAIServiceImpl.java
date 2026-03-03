@@ -1,7 +1,6 @@
 package com.news.publish.service.impl;
 
 import com.news.publish.service.AIService;
-import org.springframework.stereotype.Service;
 import java.util.Arrays;
 import java.util.List;
 
@@ -54,9 +53,18 @@ public class MockAIServiceImpl implements AIService {
 
     @Override
     public String autoMatchImage(String keyword) {
-        // 使用 Unsplash 的随机图 API 作为演示
-        String encoded = java.net.URLEncoder.encode(keyword, java.nio.charset.StandardCharsets.UTF_8);
-        return "https://source.unsplash.com/800x400/?" + encoded;
+        try {
+            String encoded = java.net.URLEncoder.encode(keyword, java.nio.charset.StandardCharsets.UTF_8);
+            return "https://source.unsplash.com/800x400/?" + encoded;
+        } catch (Exception e) {
+            return "https://source.unsplash.com/800x400/?news";
+        }
+    }
+
+    @Override
+    public String generateImage(String prompt) {
+        // Mock 实现：直接返回一个 Unsplash 随机图
+        return autoMatchImage(prompt);
     }
 
     @Override
@@ -79,5 +87,25 @@ public class MockAIServiceImpl implements AIService {
             "https://source.unsplash.com/800x450/?technology,city",
             "https://source.unsplash.com/800x450/?teamwork,abstract"
         );
+    }
+
+    @Override
+    public String scrapeAndAnalyze(String url, String extractionPrompt) {
+        // 模拟网页提取与解析返回
+        return "[\n" +
+            "  {\"topic\": \"#A股大涨#\", \"participants\": \"50w人参与\"},\n" +
+            "  {\"topic\": \"#春日摄影大赛#\", \"participants\": \"12w人参与\"}\n" +
+            "]";
+    }
+    @Override
+    public List<String> matchHotTopics(String content, String hotTopicsJson) {
+        return Arrays.asList("#Mock热点1#", "#Mock热点2#");
+    }
+
+    @Override
+    public String analyzeNews(String title, String content) {
+        if (title == null && content == null) return "{}";
+        // Mock 新闻深度分析：返回简单结构化结果
+        return "{\"title\":\"" + (title != null ? title : "") + "\",\"summary\":\"【Mock 分析】基于标题与正文的模拟深度解读。\",\"keywords\":[\"热点\",\"趋势\",\"解读\"]}";
     }
 }

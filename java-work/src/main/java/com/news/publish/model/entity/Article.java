@@ -22,6 +22,8 @@ public class Article {
     private String author;
     private String summary;
     private String coverImage;
+    /** 视频地址（当 contentType 为 video 时使用，用于视频分发） */
+    private String videoUrl;
     private String category;
     private String tags;
 
@@ -29,6 +31,9 @@ public class Article {
 
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
+    
+    @Column(columnDefinition = "LONGTEXT")
+    private String platformSettings;
 
     @Column(nullable = false)
     private Long userId;

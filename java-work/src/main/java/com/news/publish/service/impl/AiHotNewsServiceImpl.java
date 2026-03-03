@@ -50,7 +50,7 @@ public class AiHotNewsServiceImpl implements HotNewsService {
             """;
 
     @Override
-    public List<HotNewsDto> fetchHotNewsByKeyword(String keyword) {
+    public List<HotNewsDto> fetchHotNewsByKeyword(String keyword, String tab, String platform, String contentType, String domains, String publishTime, String sort) {
         try {
             String prompt = String.format(PROMPT_TEMPLATE, keyword);
             String aiResponse = aiService.generateSummary(prompt);
@@ -88,6 +88,11 @@ public class AiHotNewsServiceImpl implements HotNewsService {
             log.warn("AI 热点生成未知异常，降级到 Mock: {}", e.getMessage());
             return fallback(keyword);
         }
+    }
+
+    @Override
+    public String fetchArticleContent(String url, String platform, String type) {
+        return fetchArticleContent(url);
     }
 
     @Override

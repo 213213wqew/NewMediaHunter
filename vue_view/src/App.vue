@@ -21,6 +21,9 @@
         <router-link to="/hot-news" class="nav-item" :class="{ active: $route.path === '/hot-news' }">
           <span class="nav-icon">🔥</span> 热点资讯
         </router-link>
+        <router-link to="/video" class="nav-item" :class="{ active: $route.path === '/video' }">
+          <span class="nav-icon">🎬</span> 视频创作
+        </router-link>
         <router-link to="/media" class="nav-item" :class="{ active: $route.path === '/media' }">
           <span class="nav-icon">📦</span> 素材中心
         </router-link>
@@ -31,6 +34,9 @@
         <div class="nav-section-title">账号与任务</div>
         <router-link to="/account" class="nav-item" :class="{ active: $route.path === '/account' }">
           <span class="nav-icon">🔗</span> 账号管理
+        </router-link>
+        <router-link to="/channel" class="nav-item" :class="{ active: $route.path === '/channel' }">
+          <span class="nav-icon">🎯</span> 分发渠道
         </router-link>
         <router-link to="/task" class="nav-item" :class="{ active: $route.path === '/task' }">
           <span class="nav-icon">📋</span> 我的发文
@@ -47,7 +53,7 @@
             <div class="user-name">{{ userName || '未登录' }}</div>
             <div class="user-role" style="display:flex; justify-content:space-between; align-items:center;">
               <span>{{ userRole || 'GUEST' }}</span>
-              <a href="javascript:void(0)" @click="handleLogout" style="color:#djdjdj; font-size:12px; text-decoration:none;">[退出]</a>
+              <a href="javascript:void(0)" @click="handleLogout" style="color:#ccc; font-size:12px; text-decoration:none;">[退出]</a>
             </div>
           </div>
         </div>

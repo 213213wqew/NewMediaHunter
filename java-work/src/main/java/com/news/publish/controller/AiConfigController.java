@@ -11,6 +11,8 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestClient;
 
+import com.news.publish.service.AIService;
+import com.news.publish.service.impl.RealAIServiceImpl;
 import java.util.*;
 
 @Slf4j
@@ -21,6 +23,13 @@ public class AiConfigController {
 
     private final AiConfigService aiConfigService;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final AIService aiService;
+
+    // DTO for internal agent requests from Python bridge
+    public static class AiAgentRequest {
+        public String prompt;
+        public String htmlContext;
+    }
 
     /** 获取当前用户的 AI 配置（不存在则返回 null） */
     @GetMapping
@@ -38,12 +47,28 @@ public class AiConfigController {
     @PostMapping("/test")
     public Map<String, Object> testConfig(@RequestBody AiConfig config) {
         try {
-            com.news.publish.service.AIService testService =
-                new com.news.publish.service.impl.RealAIServiceImpl(config);
+            AIService testService = new RealAIServiceImpl(config);
             String result = testService.generateSummary("这是一段用于测试 AI 模型连接是否正常的内容。");
             return Map.of("success", true, "message", "连接成功！模型响应：" + result.substring(0, Math.min(result.length(), 80)));
         } catch (Exception e) {
             return Map.of("success", false, "message", "连接失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 内部接口：供 Python Agent (Skills) 调用，在面临页面改版无法定位元素时，
+     * 传入崩溃时的 HTML 上下文和问题，由大模型分析后返回全新的 CSS 选择器或解决方案。
+     */
+    @PostMapping("/internal/ask-ai")
+    public Map<String, Object> askAiFromAgent(@RequestBody AiAgentRequest request) {
+        try {
+            // 此处借用现有 AIService 的直接对话能力 (RealAIServiceImpl.askAgentQuestion)
+            String answer = ((RealAIServiceImpl) aiService)
+                    .askAgentQuestion(request.prompt, request.htmlContext);
+            return Map.of("success", true, "answer", answer);
+        } catch (Exception e) {
+            log.error("内部代理 Agent 请求大模型失败: {}", e.getMessage());
+            return Map.of("success", false, "message", "AI请求失败：" + e.getMessage());
         }
     }
 

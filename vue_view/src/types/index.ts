@@ -30,10 +30,14 @@ export interface Article {
     contentType?: string;
     author?: string;
     summary?: string;
+    coverImage?: string;
+    /** 视频地址（contentType=video 时必填） */
+    videoUrl?: string;
     category?: string;
     tags?: string;
+    platformSettings?: string; // 各平台独立设置的 JSON 字符串
     status?: number;
-    createTime: string;
+    createTime?: string;
 }
 
 export interface MediaResource {

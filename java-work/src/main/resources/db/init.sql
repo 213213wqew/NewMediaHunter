@@ -75,8 +75,10 @@ CREATE TABLE `article` (
     `author`        VARCHAR(100)    DEFAULT NULL COMMENT '作者名称',
     `summary`       VARCHAR(1000)   DEFAULT NULL COMMENT '文章摘要',
     `cover_image`   VARCHAR(500)    DEFAULT NULL COMMENT '封面图片地址',
+    `video_url`     VARCHAR(1000)   DEFAULT NULL COMMENT '视频地址（content_type=video 时使用）',
     `category`      VARCHAR(100)    DEFAULT NULL COMMENT '内容分类',
     `tags`          VARCHAR(500)    DEFAULT NULL COMMENT '标签（逗号分隔）',
+    `platform_settings` LONGTEXT      DEFAULT NULL COMMENT '多平台适配设置(JSON)',
     `status`        TINYINT         DEFAULT 0 COMMENT '稿件状态: 0-草稿, 1-就绪, 2-已归档',
     `create_time`   DATETIME        DEFAULT CURRENT_TIMESTAMP,
     `update_time`   DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -159,3 +161,15 @@ CREATE TABLE `ai_config` (
     `update_time` DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户 AI 模型配置表';
 
+-- =====================================================
+-- 8. 平台热点任务/话题缓存表
+-- 用于存储各分发平台（如百家号）抓取的实时热点，供创作匹配使用
+-- =====================================================
+DROP TABLE IF EXISTS `platform_task`;
+CREATE TABLE `platform_task` (
+    `id`           BIGINT       PRIMARY KEY AUTO_INCREMENT,
+    `platform_key` VARCHAR(50)  NOT NULL                 COMMENT '平台标识，如 bjh',
+    `topic`        VARCHAR(1000) NOT NULL                COMMENT '话题或任务内容',
+    `extra_info`   VARCHAR(255) DEFAULT NULL             COMMENT '额外信息，如参与人数',
+    `update_time`  DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '同步时间'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='平台热点任务缓存表';

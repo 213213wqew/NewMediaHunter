@@ -13,7 +13,7 @@ import java.util.UUID;
 public class MockHotNewsServiceImpl implements HotNewsService {
 
     @Override
-    public List<HotNewsDto> fetchHotNewsByKeyword(String keyword) {
+    public List<HotNewsDto> fetchHotNewsByKeyword(String keyword, String tab, String platform, String contentType, String domains, String publishTime, String sort) {
         List<HotNewsDto> newsList = new ArrayList<>();
         
         // 模拟抓取过程与假数据
@@ -38,6 +38,11 @@ public class MockHotNewsServiceImpl implements HotNewsService {
             newsList.add(news);
         }
         return newsList;
+    }
+
+    @Override
+    public String fetchArticleContent(String url, String platform, String type) {
+        return fetchArticleContent(url);
     }
 
     @Override

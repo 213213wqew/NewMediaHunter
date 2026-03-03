@@ -1,0 +1,14 @@
+{
+    "id": "bjh_pro_agent",
+    "name": "百家号高级发布助手 (Python)",
+    "version": "1.0.0",
+    "platform": "baijiahao",
+    "entry": "main.py",
+    "description": "基于 Python Playwright 的百家号自适应发布插件，支持语义寻路和持久化 Session。",
+    "params": [
+        "title",
+        "content",
+        "category",
+        "tags"
+    ]
+}

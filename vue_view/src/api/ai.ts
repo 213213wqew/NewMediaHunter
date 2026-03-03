@@ -12,8 +12,26 @@ export interface HotNews {
     tags?: string[];
 }
 
-export const fetchHotNews = (keyword: string): Promise<HotNews[]> => {
-    return request.get('/hot-news/fetch', { params: { keyword } });
+/** 筛选参数：与创作罐头页面一致，用于在目标页上自动点选后再抓取 */
+export interface HotNewsFilter {
+    tab?: string;
+    platform?: string;
+    contentType?: string;
+    domains?: string[];  // 内容领域多选，如 ['生活', '影视']
+    publishTime?: string;
+    sort?: string;
+}
+
+/** tab: network=全网热榜, article=全网爆文, popular=低粉爆款；filter 会传给后端在页面上点选对应筛选项 */
+export const fetchHotNews = (keyword: string, tab?: string, filter?: HotNewsFilter): Promise<HotNews[]> => {
+    const params: Record<string, string> = { keyword };
+    if (tab != null && tab !== '') params.tab = tab;
+    if (filter?.platform) params.platform = filter.platform;
+    if (filter?.contentType) params.contentType = filter.contentType;
+    if (filter?.domains?.length) params.domains = filter.domains.join(',');
+    if (filter?.publishTime) params.publishTime = filter.publishTime;
+    if (filter?.sort) params.sort = filter.sort;
+    return request.get('/hot-news/fetch', { params });
 };
 
 export const fetchArticleContent = (url: string): Promise<{ content: string }> => {
@@ -40,6 +58,18 @@ export const suggestImages = (content: string): Promise<string[]> => {
     return request.post('/ai/suggest-images', { content });
 };
 
-export const fetchBaijiahaoTasks = (): Promise<{ result: string }> => {
-    return request.get('/ai/baijiahao-tasks');
+export const syncPlatformTasks = (platKey: string): Promise<{ success: boolean; count: number; message?: string }> => {
+    return request.post(`/ai/platforms/${platKey}/sync-tasks`);
+};
+
+export const getPlatformTasks = (platKey: string): Promise<any[]> => {
+    return request.get(`/ai/platforms/${platKey}/tasks`);
+};
+
+export const matchHotTopics = (content: string, hotTopicsJson: string): Promise<string[]> => {
+    return request.post('/ai/match-hot-topics', { content, hotTopicsJson });
+};
+
+export const generateImage = (prompt: string): Promise<{ url: string }> => {
+    return request.post('/ai/generate-image', { prompt });
 };

@@ -134,15 +134,24 @@ public class PublishServiceImpl implements PublishService {
             log.info("开始分发任务: 平台={}, 账号={}, 文章={}", 
                     platformKey, account.getAccountName(), article.getTitle());
 
-            // 2. 素材清洗与同步
-            recordLog(taskId, "INFO", "开始进行素材清洗与多平台同步...", null, null, null, null);
-            String cleanedContent = mediaService.cleanContent(article, account);
-            recordLog(taskId, "INFO", "素材洗涤完成", null, null, null, null);
+            boolean isVideo = "video".equalsIgnoreCase(article.getContentType())
+                    && article.getVideoUrl() != null && !article.getVideoUrl().isBlank();
 
-            // 3. 执行发布
-            recordLog(taskId, "INFO", "正在连接 " + platformKey + " 接口...", null, null, null, null);
-            adapter.publishArticle(article, account, task, cleanedContent);
-            
+            if (isVideo) {
+                // 视频分发：直接调用各平台 publishVideo
+                recordLog(taskId, "INFO", "检测到视频稿件，执行视频发布流程...", null, null, null, null);
+                adapter.publishVideo(article, account, task, article.getVideoUrl());
+            } else {
+                // 2. 素材清洗与同步
+                recordLog(taskId, "INFO", "开始进行素材清洗与多平台同步...", null, null, null, null);
+                String cleanedContent = mediaService.cleanContent(article, account);
+                recordLog(taskId, "INFO", "素材洗涤完成", null, null, null, null);
+
+                // 3. 执行发布
+                recordLog(taskId, "INFO", "正在连接 " + platformKey + " 接口...", null, null, null, null);
+                adapter.publishArticle(article, account, task, cleanedContent);
+            }
+
             task.setPublishStatus(3); // 成功
             task.setErrorMessage(null);
             taskRepository.save(task);

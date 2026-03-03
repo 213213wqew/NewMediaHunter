@@ -1,0 +1,18 @@
+# Java build output
+java-work/target/
+*.class
+
+# IDE files
+.idea/
+*.iml
+
+# Node / Vue
+vue_view/node_modules/
+vue_view/dist/
+
+# 浏览器/Playwright 会话与缓存（非源码，勿提交）
+skills/sessions/
+
+# OS generated files
+.DS_Store
+Thumbs.db

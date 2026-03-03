@@ -53,4 +53,18 @@ public interface AIService {
      * @return 大模型提纯后的结果 (通常要求它返回 JSON 字符串)
      */
     String scrapeAndAnalyze(String url, String extractionPrompt);
+    /**
+     * 根据文章内容从给定的热点话题列表中匹配最相关的项
+     */
+    List<String> matchHotTopics(String content, String hotTopicsJson);
+
+    /**
+     * 根据描述生成全新品质大图 (DALL-E 3 / Flux 等)
+     */
+    String generateImage(String prompt);
+
+    /**
+     * 新闻深度分析 (针对 News Aggregator Skill)
+     */
+    String analyzeNews(String title, String content);
 }
