@@ -1,12 +1,12 @@
 package com.news.publish.service.adapter.impl.baijiahao;
 
-import com.microsoft.playwright.BrowserContext;
-import com.microsoft.playwright.Page;
 import com.news.publish.model.entity.Account;
 import com.news.publish.model.entity.Article;
 import com.news.publish.model.entity.PublishTask;
 import com.news.publish.service.adapter.PlatformAdapter;
 import com.news.publish.service.automation.BrowserService;
+import com.news.publish.service.automation.PythonSkillRunner;
+import com.news.publish.service.automation.SkillDiscoveryService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
@@ -29,6 +29,12 @@ public class BaijiahaoAdapter implements PlatformAdapter {
 
     @Autowired
     private BrowserService browserService;
+
+    @Autowired
+    private PythonSkillRunner pythonSkillRunner;
+
+    @Autowired
+    private SkillDiscoveryService skillDiscoveryService;
 
     @Override
     public String getPlatformKey() {
@@ -74,26 +80,43 @@ public class BaijiahaoAdapter implements PlatformAdapter {
             }
         } 
         
-        // 优先使用浏览器自动化（原 Cookie 模式升级）
+        // Cookie 模式：走百家号技能（图文发布）
         else if (cookie != null && !cookie.isEmpty()) {
-            log.info("尝试通过浏览器自动化发布到百家号: {}", article.getTitle());
-            try (BrowserContext context = browserService.createContextWithCookies(cookie)) {
-                try (Page page = context.newPage()) {
-                    page.navigate("https://baijiahao.baidu.com/builder/rc/edit?type=news");
-                    log.info("已打开百家号编辑页...");
-                    
-                    // TODO: 编写具体的百家号发布逻辑
-                    
-                    log.info("自动化逻辑执行完毕 (百家号)");
-                }
-            } catch (Exception e) {
-                log.error("自动化发布失败 (百家号): {}", e.getMessage());
-                throw new RuntimeException("自动化模式发布失败: " + e.getMessage());
+            log.info("通过百家号技能发布图文: {}", article.getTitle());
+            SkillDiscoveryService.SkillMetadata meta = skillDiscoveryService.getSkill("baijiahao_agent");
+            if (meta == null) {
+                throw new RuntimeException("未找到百家号技能 (baijiahao_agent)，请确认 skills/platforms/baijiahao 已配置");
             }
-            
-            String articleId = "bjh_auto_" + System.currentTimeMillis() / 1000;
-            task.setPlatformArticleId(articleId);
-            task.setPlatformArticleUrl("https://baijiahao.baidu.com/s?id=" + articleId);
+            Map<String, Object> params = new HashMap<>();
+            params.put("platform", "baijiahao");
+            params.put("command", "PUBLISH");
+            params.put("account_id", account.getId());
+            params.put("accountId", account.getId().toString());
+            params.put("cookieJson", cookie);
+            params.put("title", article.getTitle());
+            params.put("htmlContent", content != null ? content : article.getContent());
+            params.put("summary", article.getSummary());
+            params.put("tags", article.getTags());
+            if (article.getPlatformSettings() != null && !article.getPlatformSettings().isBlank()) {
+                try {
+                    params.put("platformSettings", new com.fasterxml.jackson.databind.ObjectMapper().readValue(article.getPlatformSettings(), Map.class));
+                } catch (Exception ignored) {}
+            }
+            PythonSkillRunner.SkillExecutionResult result = pythonSkillRunner.execute(meta, params);
+            if (result != null && !result.isSuccess() && result.getMessage() != null) {
+                throw new RuntimeException("百家号技能执行失败: " + result.getMessage());
+            }
+            if (result != null && result.getData() != null) {
+                if (result.getData().get("platformArticleId") != null) {
+                    task.setPlatformArticleId(String.valueOf(result.getData().get("platformArticleId")));
+                }
+                if (result.getUrl() != null) task.setPlatformArticleUrl(result.getUrl());
+                else if (result.getData().get("final_url") != null) task.setPlatformArticleUrl(String.valueOf(result.getData().get("final_url")));
+            }
+            if (task.getPlatformArticleId() == null) {
+                task.setPlatformArticleId("bjh_auto_" + System.currentTimeMillis() / 1000);
+                task.setPlatformArticleUrl("https://baijiahao.baidu.com/s?id=" + task.getPlatformArticleId());
+            }
         } else {
             throw new RuntimeException("百家号发布失败: 未配置 API 凭证或登录 Cookie");
         }
@@ -172,6 +195,35 @@ public class BaijiahaoAdapter implements PlatformAdapter {
 
     @Override
     public void publishVideo(Article article, Account account, PublishTask task, String videoUrl) {
-        log.warn("目前百家号适配器仅支持图文发布");
+        log.info("通过百家号技能发布视频: {}", article.getTitle());
+        SkillDiscoveryService.SkillMetadata meta = skillDiscoveryService.getSkill("baijiahao_agent");
+        if (meta == null) {
+            throw new RuntimeException("未找到百家号技能 (baijiahao_agent)");
+        }
+        Map<String, Object> params = new HashMap<>();
+        params.put("platform", "baijiahao");
+        params.put("command", "PUBLISH_VIDEO");
+        params.put("account_id", account.getId());
+        params.put("accountId", account.getId().toString());
+        params.put("cookieJson", account.getCookieData());
+        params.put("title", article.getTitle());
+        params.put("videoPath", videoUrl);
+        params.put("videoUrl", videoUrl);
+        params.put("summary", article.getSummary());
+        params.put("tags", article.getTags());
+        PythonSkillRunner.SkillExecutionResult result = pythonSkillRunner.execute(meta, params);
+        if (result != null && !result.isSuccess()) {
+            throw new RuntimeException(result.getMessage() != null ? result.getMessage() : "百家号视频发布失败");
+        }
+        if (result != null && result.getData() != null) {
+            if (result.getData().get("platformArticleId") != null) {
+                task.setPlatformArticleId(String.valueOf(result.getData().get("platformArticleId")));
+            }
+            if (result.getUrl() != null) task.setPlatformArticleUrl(result.getUrl());
+        }
+        if (task.getPlatformArticleId() == null) {
+            task.setPlatformArticleId("bjh_video_" + System.currentTimeMillis() / 1000);
+            task.setPlatformArticleUrl("https://baijiahao.baidu.com/s?id=" + task.getPlatformArticleId());
+        }
     }
 }

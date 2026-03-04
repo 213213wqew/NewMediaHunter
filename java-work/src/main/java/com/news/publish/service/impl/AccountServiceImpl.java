@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * 账号服务：使用本地文件存储，不依赖数据库。
+ * 账号服务：回归本地文件存储。
  */
 @Primary
 @Service

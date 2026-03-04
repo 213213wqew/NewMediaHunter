@@ -6,8 +6,8 @@ import com.news.publish.model.entity.Account;
 import com.news.publish.model.entity.Article;
 import com.news.publish.model.entity.PublishTask;
 import com.news.publish.service.AccountService;
-import com.news.publish.repository.ArticleRepository;
-import com.news.publish.repository.PublishTaskRepository;
+import com.news.publish.service.ArticleFileStorage;
+import com.news.publish.service.PublishTaskFileStorage;
 import com.news.publish.service.ComplianceService;
 import com.news.publish.service.PublishService;
 import com.news.publish.service.adapter.PlatformAdapter;
@@ -17,7 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,9 +29,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PublishServiceImpl implements PublishService {
 
-    private final ArticleRepository articleRepository;
+    private final ArticleFileStorage articleFileStorage;
     private final AccountService accountService;
-    private final PublishTaskRepository taskRepository;
+    private final PublishTaskFileStorage taskFileStorage;
     private final com.news.publish.repository.PlatformRepository platformRepository;
     private final com.news.publish.repository.PublishLogRepository logRepository;
     private final List<PlatformAdapter> adapters;
@@ -40,25 +39,29 @@ public class PublishServiceImpl implements PublishService {
     private final ComplianceService complianceService;
 
     private void recordLog(Long taskId, String level, String message, String request, String response, Integer status, Exception e) {
-        com.news.publish.model.entity.PublishLog pl = new com.news.publish.model.entity.PublishLog();
-        pl.setTaskId(taskId);
-        pl.setLogLevel(level);
-        pl.setMessage(message);
-        pl.setRequestData(request);
-        pl.setResponseData(response);
-        pl.setHttpStatus(status);
-        if (e != null) {
-            java.io.StringWriter sw = new java.io.StringWriter();
-            e.printStackTrace(new java.io.PrintWriter(sw));
-            pl.setStackTrace(sw.toString());
+        try {
+            com.news.publish.model.entity.PublishLog pl = new com.news.publish.model.entity.PublishLog();
+            pl.setTaskId(taskId);
+            pl.setLogLevel(level);
+            pl.setMessage(message);
+            pl.setRequestData(request);
+            pl.setResponseData(response);
+            pl.setHttpStatus(status);
+            if (e != null) {
+                java.io.StringWriter sw = new java.io.StringWriter();
+                e.printStackTrace(new java.io.PrintWriter(sw));
+                pl.setStackTrace(sw.toString());
+            }
+            logRepository.save(pl);
+        } catch (Exception ex) {
+            log.warn("写入发布日志失败（可能未使用数据库）: {}", ex.getMessage());
         }
-        logRepository.save(pl);
     }
 
     @Scheduled(fixedDelay = 60000)
     public void schedulePoller() {
         LocalDateTime now = LocalDateTime.now();
-        List<PublishTask> dueTasks = taskRepository.findByPublishStatusAndScheduledTimeBefore(0, now);
+        List<PublishTask> dueTasks = taskFileStorage.findByPublishStatusAndScheduledTimeBefore(0, now);
         if (!dueTasks.isEmpty()) {
             log.info("定时分发轮询: 发现 {} 个到期任务", dueTasks.size());
             dueTasks.forEach(task -> executePublishTask(task.getId()));
@@ -66,9 +69,8 @@ public class PublishServiceImpl implements PublishService {
     }
 
     @Override
-    @Transactional
     public List<PublishTask> submitPublishTask(PublishRequest request) {
-        Article article = articleRepository.findById(request.getArticleId())
+        Article article = articleFileStorage.findById(request.getArticleId())
                 .orElseThrow(() -> new RuntimeException("文章不存在"));
 
         if (!UserContext.isAdmin() && !article.getUserId().equals(UserContext.getUserId())) {
@@ -89,7 +91,7 @@ public class PublishServiceImpl implements PublishService {
             task.setUserId(UserContext.getUserId());
             task.setPublishStatus(0); // 待处理
             task.setScheduledTime(request.getScheduledTime());
-            tasks.add(taskRepository.save(task));
+            tasks.add(taskFileStorage.save(task));
             
             if (request.getScheduledTime() == null || request.getScheduledTime().isBefore(LocalDateTime.now())) {
                 executePublishTask(task.getId());
@@ -101,15 +103,16 @@ public class PublishServiceImpl implements PublishService {
     @Async("taskExecutor")
     @Override
     public void executePublishTask(Long taskId) {
-        PublishTask task = taskRepository.findById(taskId).orElse(null);
+        PublishTask task = taskFileStorage.findById(taskId).orElse(null);
         if (task == null) return;
 
         try {
             task.setPublishStatus(2); // 发布中
-            taskRepository.save(task);
+            taskFileStorage.save(task);
             recordLog(taskId, "INFO", "开始执行任务分发流程", null, null, null, null);
 
-            Article article = articleRepository.findById(task.getArticleId()).get();
+            Article article = articleFileStorage.findById(task.getArticleId())
+                    .orElseThrow(() -> new RuntimeException("文章不存在"));
             Account account = accountService.getById(task.getAccountId()).orElseThrow(() -> new RuntimeException("账号不存在"));
 
             // 1. 合规检查
@@ -154,14 +157,14 @@ public class PublishServiceImpl implements PublishService {
 
             task.setPublishStatus(3); // 成功
             task.setErrorMessage(null);
-            taskRepository.save(task);
+            taskFileStorage.save(task);
             recordLog(taskId, "INFO", "文章已成功同步至 " + platformKey + "！文章ID: " + task.getPlatformArticleId(), null, "SUCCESS", 200, null);
 
         } catch (Exception e) {
             log.error("分发任务执行异常: taskId={}", taskId, e);
             task.setPublishStatus(4); // 失败
             task.setErrorMessage(e.getMessage());
-            taskRepository.save(task);
+            taskFileStorage.save(task);
             recordLog(taskId, "ERROR", "分发任务执行失败: " + e.getMessage(), null, null, 500, e);
         }
     }
@@ -169,9 +172,9 @@ public class PublishServiceImpl implements PublishService {
     @Override
     public List<PublishTask> getAllTasks() {
         if (UserContext.isAdmin()) {
-            return taskRepository.findAll();
+            return taskFileStorage.findAll();
         }
-        return taskRepository.findByUserId(UserContext.getUserId());
+        return taskFileStorage.findByUserId(UserContext.getUserId());
     }
 
     @Override
@@ -183,13 +186,13 @@ public class PublishServiceImpl implements PublishService {
         
         if (UserContext.isAdmin()) {
             accountCount = accountService.getAllAccounts().size();
-            articleCount = articleRepository.count();
-            allTasks = taskRepository.findAll();
+            articleCount = articleFileStorage.findAll().size();
+            allTasks = taskFileStorage.findAll();
         } else {
             Long userId = UserContext.getUserId();
             accountCount = accountService.getAllAccounts().size();
-            articleCount = articleRepository.findByUserId(userId).size();
-            allTasks = taskRepository.findByUserId(userId);
+            articleCount = articleFileStorage.findByUserId(userId).size();
+            allTasks = taskFileStorage.findByUserId(userId);
         }
         
         stats.setTotalAccounts(accountCount);
@@ -242,10 +245,15 @@ public class PublishServiceImpl implements PublishService {
 
     @Override
     public List<com.news.publish.model.entity.PublishLog> getLogsByTaskId(Long taskId) {
-        PublishTask task = taskRepository.findById(taskId).orElseThrow(() -> new RuntimeException("任务不存在"));
+        PublishTask task = taskFileStorage.findById(taskId).orElseThrow(() -> new RuntimeException("任务不存在"));
         if (!UserContext.isAdmin() && !task.getUserId().equals(UserContext.getUserId())) {
             throw new RuntimeException("无权查看此任务日志");
         }
-        return logRepository.findByTaskIdOrderByCreateTimeDesc(taskId);
+        try {
+            return logRepository.findByTaskIdOrderByCreateTimeDesc(taskId);
+        } catch (Exception e) {
+            log.warn("查询发布日志失败（可能未使用数据库）: {}", e.getMessage());
+            return List.of();
+        }
     }
 }

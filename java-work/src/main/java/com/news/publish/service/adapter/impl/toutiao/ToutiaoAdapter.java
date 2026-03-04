@@ -1,18 +1,19 @@
 package com.news.publish.service.adapter.impl.toutiao;
 
-import com.microsoft.playwright.BrowserContext;
-import com.microsoft.playwright.Page;
 import com.news.publish.model.entity.Account;
 import com.news.publish.model.entity.Article;
 import com.news.publish.model.entity.PublishTask;
 import com.news.publish.service.adapter.PlatformAdapter;
 import com.news.publish.service.automation.BrowserService;
+import com.news.publish.service.automation.PythonSkillRunner;
+import com.news.publish.service.automation.SkillDiscoveryService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.UUID;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -23,6 +24,12 @@ public class ToutiaoAdapter implements PlatformAdapter {
     @Autowired
     private BrowserService browserService;
 
+    @Autowired
+    private PythonSkillRunner pythonSkillRunner;
+
+    @Autowired
+    private SkillDiscoveryService skillDiscoveryService;
+
     @Override
     public String getPlatformKey() {
         return "toutiao";
@@ -30,24 +37,38 @@ public class ToutiaoAdapter implements PlatformAdapter {
 
     @Override
     public void publishArticle(Article article, Account account, PublishTask task, String content) {
-        log.info("开始通过浏览器自动化发布到头条号: {}", article.getTitle());
-        
-        try (BrowserContext context = browserService.createContextWithCookies(account.getCookieData())) {
-            try (Page page = context.newPage()) {
-                page.navigate("https://mp.toutiao.com/profile_v4/graphic/publish");
-                log.info("已打开头条号编辑页...");
-                
-                // TODO: 编写具体的头条号发布逻辑
-                
-                log.info("自动化逻辑执行完毕 (今日头条)");
-            }
-        } catch (Exception e) {
-            log.error("自动化发布失败 (今日头条): {}", e.getMessage());
+        log.info("开始通过头条技能发布图文到头条号: {}", article.getTitle());
+        SkillDiscoveryService.SkillMetadata meta = skillDiscoveryService.getSkill("toutiao_agent");
+        if (meta == null) {
+            throw new RuntimeException("未找到头条技能 (toutiao_agent)，请确认 skills/platforms/toutiao 已配置");
         }
-
-        String articleId = "tt_auto_" + System.currentTimeMillis() / 1000;
-        task.setPlatformArticleId(articleId);
-        task.setPlatformArticleUrl("https://www.toutiao.com/article/" + articleId);
+        Map<String, Object> params = new HashMap<>();
+        params.put("platform", "toutiao");
+        params.put("command", "PUBLISH");
+        params.put("account_id", account.getId());
+        params.put("accountId", account.getId().toString());
+        params.put("cookieJson", account.getCookieData());
+        params.put("title", article.getTitle());
+        params.put("htmlContent", content != null ? content : article.getContent());
+        params.put("summary", article.getSummary());
+        params.put("tags", article.getTags());
+        if (article.getPlatformSettings() != null && !article.getPlatformSettings().isBlank()) {
+            try {
+                params.put("platformSettings", new com.fasterxml.jackson.databind.ObjectMapper().readValue(article.getPlatformSettings(), Map.class));
+            } catch (Exception ignored) {}
+        }
+        PythonSkillRunner.SkillExecutionResult result = pythonSkillRunner.execute(meta, params);
+        if (result != null && result.isSuccess() && result.getData() != null) {
+            if (result.getData().get("platformArticleId") != null) {
+                task.setPlatformArticleId(String.valueOf(result.getData().get("platformArticleId")));
+            }
+            if (result.getUrl() != null) task.setPlatformArticleUrl(result.getUrl());
+            else if (result.getData().get("final_url") != null) task.setPlatformArticleUrl(String.valueOf(result.getData().get("final_url")));
+        }
+        if (task.getPlatformArticleId() == null) {
+            task.setPlatformArticleId("tt_auto_" + System.currentTimeMillis() / 1000);
+            task.setPlatformArticleUrl("https://www.toutiao.com/article/" + task.getPlatformArticleId());
+        }
     }
 
     @Override
@@ -76,6 +97,33 @@ public class ToutiaoAdapter implements PlatformAdapter {
 
     @Override
     public void publishVideo(Article article, Account account, PublishTask task, String videoUrl) {
-        log.warn("目前头条号 Cookie 适配器仅支持图文发布");
+        log.info("开始通过头条技能发布视频到头条号: {}", article.getTitle());
+        SkillDiscoveryService.SkillMetadata meta = skillDiscoveryService.getSkill("toutiao_agent");
+        if (meta == null) {
+            throw new RuntimeException("未找到头条技能 (toutiao_agent)，请确认 skills/platforms/toutiao 已配置");
+        }
+        Map<String, Object> params = new HashMap<>();
+        params.put("platform", "toutiao");
+        params.put("command", "PUBLISH_VIDEO");
+        params.put("account_id", account.getId());
+        params.put("accountId", account.getId().toString());
+        params.put("cookieJson", account.getCookieData());
+        params.put("title", article.getTitle());
+        params.put("videoPath", videoUrl);
+        params.put("videoUrl", videoUrl);
+        params.put("summary", article.getSummary());
+        params.put("tags", article.getTags());
+        PythonSkillRunner.SkillExecutionResult result = pythonSkillRunner.execute(meta, params);
+        if (result != null && result.isSuccess() && result.getData() != null) {
+            if (result.getData().get("platformArticleId") != null) {
+                task.setPlatformArticleId(String.valueOf(result.getData().get("platformArticleId")));
+            }
+            if (result.getUrl() != null) task.setPlatformArticleUrl(result.getUrl());
+            else if (result.getData().get("final_url") != null) task.setPlatformArticleUrl(String.valueOf(result.getData().get("final_url")));
+        }
+        if (task.getPlatformArticleId() == null) {
+            task.setPlatformArticleId("tt_video_" + System.currentTimeMillis() / 1000);
+            task.setPlatformArticleUrl("https://www.toutiao.com/video/" + task.getPlatformArticleId());
+        }
     }
 }

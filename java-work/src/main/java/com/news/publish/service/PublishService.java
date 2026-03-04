@@ -22,4 +22,7 @@ public interface PublishService {
     List<PublishTask> getAllTasks();
     com.news.publish.model.dto.PublishStats getStatistics();
     List<com.news.publish.model.entity.PublishLog> getLogsByTaskId(Long taskId);
+
+    /** 定时轮询到期任务并执行（由 @Scheduled 调用，需在接口声明以便代理可调用） */
+    void schedulePoller();
 }
