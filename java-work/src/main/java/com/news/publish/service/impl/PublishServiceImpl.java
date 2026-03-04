@@ -5,7 +5,7 @@ import com.news.publish.model.dto.PublishStats;
 import com.news.publish.model.entity.Account;
 import com.news.publish.model.entity.Article;
 import com.news.publish.model.entity.PublishTask;
-import com.news.publish.repository.AccountRepository;
+import com.news.publish.service.AccountService;
 import com.news.publish.repository.ArticleRepository;
 import com.news.publish.repository.PublishTaskRepository;
 import com.news.publish.service.ComplianceService;
@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 public class PublishServiceImpl implements PublishService {
 
     private final ArticleRepository articleRepository;
-    private final AccountRepository accountRepository;
+    private final AccountService accountService;
     private final PublishTaskRepository taskRepository;
     private final com.news.publish.repository.PlatformRepository platformRepository;
     private final com.news.publish.repository.PublishLogRepository logRepository;
@@ -77,9 +77,9 @@ public class PublishServiceImpl implements PublishService {
 
         List<PublishTask> tasks = new ArrayList<>();
         for (Long accountId : request.getAccountIds()) {
-            Account account = accountRepository.findById(accountId)
+            Account account = accountService.getById(accountId)
                     .orElseThrow(() -> new RuntimeException("账号不存在"));
-            if (!UserContext.isAdmin() && !account.getUserId().equals(UserContext.getUserId())) {
+            if (!UserContext.isAdmin() && account.getUserId() != null && !account.getUserId().equals(UserContext.getUserId())) {
                 throw new RuntimeException("无权操作此账号");
             }
 
@@ -110,7 +110,7 @@ public class PublishServiceImpl implements PublishService {
             recordLog(taskId, "INFO", "开始执行任务分发流程", null, null, null, null);
 
             Article article = articleRepository.findById(task.getArticleId()).get();
-            Account account = accountRepository.findById(task.getAccountId()).get();
+            Account account = accountService.getById(task.getAccountId()).orElseThrow(() -> new RuntimeException("账号不存在"));
 
             // 1. 合规检查
             List<String> complianceIssues = complianceService.checkContent(article);
@@ -182,12 +182,12 @@ public class PublishServiceImpl implements PublishService {
         List<PublishTask> allTasks;
         
         if (UserContext.isAdmin()) {
-            accountCount = accountRepository.count();
+            accountCount = accountService.getAllAccounts().size();
             articleCount = articleRepository.count();
             allTasks = taskRepository.findAll();
         } else {
             Long userId = UserContext.getUserId();
-            accountCount = accountRepository.findByUserId(userId).size();
+            accountCount = accountService.getAllAccounts().size();
             articleCount = articleRepository.findByUserId(userId).size();
             allTasks = taskRepository.findByUserId(userId);
         }
@@ -224,7 +224,7 @@ public class PublishServiceImpl implements PublishService {
 
         Map<Long, Long> platformCounts = allTasks.stream()
                 .collect(Collectors.groupingBy(task -> {
-                    return accountRepository.findById(task.getAccountId())
+                    return accountService.getById(task.getAccountId())
                             .map(Account::getPlatformId)
                             .orElse(0L);
                 }, Collectors.counting()));

@@ -30,7 +30,8 @@ public class SkillDiscoveryService {
     }
 
     /**
-     * 刷新并扫描技能目录 (总分模式)
+     * 刷新并扫描技能目录。
+     * 优先扫描 platforms/ 子目录（登录/Token/注入已拆分，按平台+账号隔离）；若无则回退到 sub_skills/*.py。
      */
     public synchronized void refreshSkills() {
         File root = new File(skillsPath);
@@ -39,33 +40,52 @@ public class SkillDiscoveryService {
             return;
         }
 
-        File subSkillsDir = new File(root, "sub_skills");
-        if (!subSkillsDir.exists() || !subSkillsDir.isDirectory()) {
-            log.warn("子技能目录不存在: {}", subSkillsDir.getAbsolutePath());
-            return;
+        skills.clear();
+
+        File platformsDir = new File(root, "platforms");
+        if (platformsDir.exists() && platformsDir.isDirectory()) {
+            File[] dirs = platformsDir.listFiles(File::isDirectory);
+            if (dirs != null) {
+                for (File dir : dirs) {
+                    String name = dir.getName();
+                    if (name.startsWith("__")) continue;
+                    String platformKey = name;
+                    SkillMetadata meta = new SkillMetadata();
+                    meta.setId(platformKey + "_agent");
+                    meta.setName(platformKey.toUpperCase() + " 独立代理 Agent");
+                    meta.setPlatform(platformKey);
+                    meta.setVersion("2.0.0");
+                    meta.setEntry("agent_master.py");
+                    meta.setPath(root.getAbsolutePath());
+                    meta.setDescription("platforms/" + platformKey + "：登录/Token/注入分离，支持多账号");
+                    skills.put(meta.getId(), meta);
+                    log.info("发现平台技能: {} (platform: {})", meta.getId(), platformKey);
+                }
+            }
         }
 
-        File[] files = subSkillsDir.listFiles((dir, name) -> name.endsWith(".py"));
-        if (files == null) return;
-
-        skills.clear();
-        for (File file : files) {
-            String fileName = file.getName();
-            if (fileName.equals("__init__.py")) continue;
-
-            String platformKey = fileName.replace(".py", "");
-            SkillMetadata meta = new SkillMetadata();
-            meta.setId(platformKey + "_agent");
-            meta.setName(platformKey.toUpperCase() + " 独立代理 Agent");
-            meta.setPlatform(platformKey);
-            meta.setVersion("2.0.0");
-            meta.setEntry("agent_master.py"); // 所有分量都通过总 Agent 运行
-            meta.setPath(root.getAbsolutePath());
-            meta.setDescription("依托于 Master Agent 的独立自动化逻辑");
-            
-            skills.put(meta.getId(), meta);
-            System.out.println(">>> [SKILL DISCOVERY] Found: " + meta.getId() + " at " + file.getAbsolutePath());
-            log.info("发现独立代理分量: {} (platform: {})", meta.getId(), platformKey);
+        if (skills.isEmpty()) {
+            File subSkillsDir = new File(root, "sub_skills");
+            if (subSkillsDir.exists() && subSkillsDir.isDirectory()) {
+                File[] files = subSkillsDir.listFiles((d, n) -> n != null && n.endsWith(".py"));
+                if (files != null) {
+                    for (File file : files) {
+                        String fileName = file.getName();
+                        if ("__init__.py".equals(fileName)) continue;
+                        String platformKey = fileName.replace(".py", "");
+                        SkillMetadata meta = new SkillMetadata();
+                        meta.setId(platformKey + "_agent");
+                        meta.setName(platformKey.toUpperCase() + " 独立代理 Agent");
+                        meta.setPlatform(platformKey);
+                        meta.setVersion("2.0.0");
+                        meta.setEntry("agent_master.py");
+                        meta.setPath(root.getAbsolutePath());
+                        meta.setDescription("依托于 Master Agent 的独立自动化逻辑");
+                        skills.put(meta.getId(), meta);
+                        log.info("发现独立代理分量: {} (platform: {})", meta.getId(), platformKey);
+                    }
+                }
+            }
         }
     }
 

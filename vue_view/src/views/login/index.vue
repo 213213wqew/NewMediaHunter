@@ -1,11 +1,7 @@
 <template>
   <div class="login-container">
-    <div class="login-bg-shapes">
-      <div class="shape shape-1"></div>
-      <div class="shape shape-2"></div>
-      <div class="shape shape-3"></div>
-      <div class="shape shape-4"></div>
-    </div>
+    <!-- 静态渐变背景，无动画/无模糊，减轻 WebView 卡顿 -->
+    <div class="login-bg-static"></div>
     <div class="login-box glass-panel">
       <div class="login-header">
         <div class="logo-icon">📡</div>
@@ -27,7 +23,7 @@
             <input type="password" v-model="form.password" placeholder="请输入密码 (如: 123456)" required />
           </div>
         </div>
-        <button style="text-align: center;" type="submit" class="btn btn-primary login-btn glow-effect" :disabled="loading">
+        <button style="text-align: center;" type="submit" class="btn btn-primary login-btn" :disabled="loading">
           {{ loading ? '登录中...' : '立 即 登 录' }}
         </button>
       </form>
@@ -57,6 +53,9 @@ const handleLogin = async () => {
       localStorage.setItem('token', res.token);
       localStorage.setItem('username', res.username);
       localStorage.setItem('role', res.role);
+      try {
+        await request.post('/auth/save-session', { token: res.token, username: res.username, role: res.role });
+      } catch (_) {}
       ElMessage.success('登录成功');
       router.push('/');
     }
@@ -81,79 +80,27 @@ const handleLogin = async () => {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-/* 动态网格点缀与模糊光斑背景 */
-.login-bg-shapes {
+/* 静态渐变背景，无动画无模糊，避免 WebView 卡顿 */
+.login-bg-static {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  overflow: hidden;
   z-index: 1;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #0f172a 70%, #1e1b4b 100%);
 }
 
-.shape {
-  position: absolute;
-  filter: blur(80px);
-  border-radius: 50%;
-  animation: float 20s infinite ease-in-out alternate;
-  opacity: 0.6;
-}
-
-.shape-1 {
-  width: 500px;
-  height: 500px;
-  background: #3b82f6; /* Blue */
-  top: -100px;
-  left: -100px;
-  animation-delay: 0s;
-}
-
-.shape-2 {
-  width: 400px;
-  height: 400px;
-  background: #8b5cf6; /* Purple */
-  bottom: -50px;
-  right: -50px;
-  animation-delay: -5s;
-}
-
-.shape-3 {
-  width: 600px;
-  height: 600px;
-  background: #0ea5e9; /* Light Blue */
-  top: 40%;
-  left: 30%;
-  animation-delay: -10s;
-}
-
-.shape-4 {
-  width: 300px;
-  height: 300px;
-  background: #ec4899; /* Pink */
-  top: 10%;
-  right: 20%;
-  animation-delay: -15s;
-}
-
-@keyframes float {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(30px, 50px) scale(1.1); }
-  100% { transform: translate(-20px, 20px) scale(0.9); }
-}
-
-/* 毛玻璃卡片 */
+/* 卡片：不用 backdrop-filter，改用半透明纯色，减轻卡顿 */
 .glass-panel {
-  background: rgba(15, 23, 42, 0.4);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(15, 23, 42, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 50px 48px;
   border-radius: 24px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
   width: 420px;
   z-index: 2;
-  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .glass-panel:hover {
@@ -174,12 +121,6 @@ const handleLogin = async () => {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   display: inline-block;
-  animation: pulse 3s infinite alternate;
-}
-
-@keyframes pulse {
-  0% { transform: scale(1); filter: brightness(1); }
-  100% { transform: scale(1.05); filter: brightness(1.2); }
 }
 
 .login-header h2 {
@@ -272,24 +213,6 @@ const handleLogin = async () => {
   overflow: hidden;
 }
 
-.login-btn::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 50%;
-  height: 100%;
-  background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0) 100%);
-  transform: skewX(-25deg);
-  animation: shine 3s infinite;
-}
-
-@keyframes shine {
-  0% { left: -100%; }
-  20% { left: 200%; }
-  100% { left: 200%; }
-}
-
 .login-btn:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 15px 30px -5px rgba(139, 92, 246, 0.6);
@@ -302,9 +225,6 @@ const handleLogin = async () => {
   cursor: not-allowed;
   box-shadow: none;
   transform: none;
-}
-.login-btn:disabled::after {
-  display: none;
 }
 
 </style>

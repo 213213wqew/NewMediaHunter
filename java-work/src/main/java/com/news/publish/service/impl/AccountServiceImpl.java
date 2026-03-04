@@ -1,60 +1,42 @@
 package com.news.publish.service.impl;
 
 import com.news.publish.model.entity.Account;
-import com.news.publish.repository.AccountRepository;
+import com.news.publish.service.AccountFileStorage;
 import com.news.publish.service.AccountService;
-import com.news.publish.interceptor.UserContext;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
+/**
+ * 账号服务：使用本地文件存储，不依赖数据库。
+ */
+@Primary
 @Service
 @RequiredArgsConstructor
 public class AccountServiceImpl implements AccountService {
-    private final AccountRepository accountRepository;
+
+    private final AccountFileStorage accountFileStorage;
 
     @Override
     public List<Account> getAllAccounts() {
-        if (UserContext.isAdmin()) {
-            return accountRepository.findAll();
-        }
-        return accountRepository.findByUserId(UserContext.getUserId());
+        return accountFileStorage.findAll();
+    }
+
+    @Override
+    public Optional<Account> getById(Long id) {
+        return accountFileStorage.findById(id);
     }
 
     @Override
     public Account saveAccount(Account account) {
-        if (account.getId() == null) {
-            account.setUserId(UserContext.getUserId());
-        } else {
-            Account existing = accountRepository.findById(account.getId()).orElseThrow();
-            if (!UserContext.isAdmin() && !existing.getUserId().equals(UserContext.getUserId())) {
-                throw new RuntimeException("无权操作此账号");
-            }
-            account.setUserId(existing.getUserId());
-        }
-
-        // 优化：对敏感信息进行加密处理 (此处演示使用 Base64，实战建议使用 AES)
-        if (account.getAppSecret() != null && !account.getAppSecret().isEmpty()) {
-            if (!isBase64(account.getAppSecret())) {
-                account.setAppSecret(java.util.Base64.getEncoder().encodeToString(account.getAppSecret().getBytes()));
-            }
-        }
-        
-        return accountRepository.save(account);
-    }
-
-    private boolean isBase64(String str) {
-        try {
-            java.util.Base64.getDecoder().decode(str);
-            return true;
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
+        return accountFileStorage.save(account);
     }
 
     @Override
     public void deleteAccount(Long id) {
-        accountRepository.deleteById(id);
+        accountFileStorage.deleteById(id);
     }
 }

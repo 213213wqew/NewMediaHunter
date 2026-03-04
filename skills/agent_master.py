@@ -1,24 +1,25 @@
+# -*- coding: utf-8 -*-
+"""
+统一入口：解析 stdin JSON，按 platform + account_id 确定 session_dir，分发给 platforms/{platform} 或兼容 sub_skills。
+- sessions 与 tokens 按「平台 + 账号」划分：sessions/{platform}/{account_id}、tokens/{platform}/{account_id}.json
+"""
 import sys
 import json
 import os
 import importlib
 
-# 动态添加 sub_skills 路径
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+if CURRENT_DIR not in sys.path:
+    sys.path.insert(0, CURRENT_DIR)
+
 SUB_SKILLS_DIR = os.path.join(CURRENT_DIR, "sub_skills")
 if SUB_SKILLS_DIR not in sys.path:
     sys.path.insert(0, SUB_SKILLS_DIR)
 
-print(f"DEBUG: sys.path = {sys.path}")
-print(f"DEBUG: sub_skills content = {os.listdir(SUB_SKILLS_DIR)}")
 
 def run_master():
-    """
-    Master Agent 入口：解析指令并分发给对应的 Sub-Skill
-    """
     try:
-        # 强制标准输入使用 UTF-8 解码，防止从 Java 接收 JSON 时出现中文乱码 (GBK -> UTF-8)
-        sys.stdin.reconfigure(encoding='utf-8')
+        sys.stdin.reconfigure(encoding="utf-8")
         input_data = sys.stdin.read()
         if not input_data:
             print(json.dumps({"success": False, "message": "No input data"}))
@@ -27,34 +28,39 @@ def run_master():
         params = json.loads(input_data)
         command = params.get("command", "PUBLISH")
         platform = params.get("platform")
-        # 兼容处理 account_id 或 accountId，并强制转为字符串以防路径拼接错误
-        account_id = str(params.get("account_id", params.get("accountId", "default_acc")))
-        
-        # 确定 Session 路径 (Skill 内部持久化)
-        session_dir = os.path.join(CURRENT_DIR, "sessions", account_id)
-        if not os.path.exists(session_dir):
-            os.makedirs(session_dir)
+        account_id = str(params.get("account_id") or params.get("accountId") or "default_acc")
 
-        # 确保输出编码为 UTF-8
-        sys.stdout.reconfigure(encoding='utf-8')
-        
-        print(f"DEBUG: Master Agent 启动. 指令: {command}, 平台: {platform}, Session: {session_dir}")
+        # 按「平台 + 账号」分目录，便于多账号切换与维护
+        session_dir = os.path.join(CURRENT_DIR, "sessions", platform or "default", account_id)
+        os.makedirs(session_dir, exist_ok=True)
 
-        # 动态加载分项技能逻辑
+        sys.stdout.reconfigure(encoding="utf-8")
+        print(f"DEBUG: Master 启动. command={command}, platform={platform}, account_id={account_id}, session_dir={session_dir}")
+
+        result = None
+        # 优先使用 platforms/{platform}（登录/存 Token/注入 已拆分）
+        if platform:
+            try:
+                mod = importlib.import_module("platforms." + platform)
+                if hasattr(mod, "execute"):
+                    result = mod.execute(params, session_dir, CURRENT_DIR)
+                    print(json.dumps(result, ensure_ascii=False))
+                    return
+            except ImportError:
+                pass
+        # 兼容：仍支持 sub_skills/{platform}.py（仅 execute(params, session_dir)）
         try:
-            sub_skill = importlib.import_module(platform)
-            # 执行分项逻辑
-            print(f"DEBUG: 正在调用子技能: {platform}.execute()")
+            sub_skill = importlib.import_module(platform or "baijiahao")
             result = sub_skill.execute(params, session_dir)
-            # 必须保证 JSON 是最后一行输出，不能在它之后 print 其他内容
             print(json.dumps(result, ensure_ascii=False))
         except ImportError:
-            print(json.dumps({"success": False, "message": f"未找到平台技能逻辑: {platform}"}))
+            print(json.dumps({"success": False, "message": f"未找到平台技能: {platform}"}))
         except Exception as e:
             print(json.dumps({"success": False, "message": f"执行异常: {str(e)}"}))
 
     except Exception as e:
         print(json.dumps({"success": False, "message": f"Master 解析错误: {str(e)}"}))
+
 
 if __name__ == "__main__":
     run_master()

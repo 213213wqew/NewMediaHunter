@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
+import request from '../utils/request';
 
 const routes: RouteRecordRaw[] = [
     {
@@ -60,8 +61,22 @@ const router = createRouter({
     routes,
 });
 
-router.beforeEach((to, from, next) => {
-    const token = localStorage.getItem('token');
+router.beforeEach(async (to, from, next) => {
+    let token = localStorage.getItem('token');
+    if (!token && to.path !== '/login') {
+        try {
+            const restored = await request.get<{ token?: string; username?: string; role?: string }>('/auth/restore-session');
+            if (restored?.token) {
+                localStorage.setItem('token', restored.token);
+                if (restored.username) localStorage.setItem('username', restored.username);
+                if (restored.role) localStorage.setItem('role', restored.role);
+                next(to.path === '/login' ? '/' : to);
+                return;
+            }
+        } catch (_) {}
+        next('/login');
+        return;
+    }
     if (to.path !== '/login' && !token) {
         next('/login');
     } else if (to.path === '/login' && token) {

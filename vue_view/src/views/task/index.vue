@@ -91,7 +91,7 @@
                 <span class="badge-dot"></span>{{ draft.status === 0 ? '草稿' : '已就绪' }}
               </span>
             </td>
-            <td style="color: var(--text-secondary); font-size: 12px;">{{ new Date(draft.createTime).toLocaleString() }}</td>
+            <td style="color: var(--text-secondary); font-size: 12px;">{{ draft.createTime ? new Date(draft.createTime).toLocaleString() : '—' }}</td>
             <td>
               <router-link :to="`/article?id=${draft.id}`" class="btn-edit-inline">继续编辑 ✍️</router-link>
               <button class="btn-text-danger" style="margin-left: 10px;" @click="handleDeleteDraft(draft.id!)">删除 🗑️</button>

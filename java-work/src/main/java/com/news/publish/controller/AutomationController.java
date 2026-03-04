@@ -78,7 +78,10 @@ public class AutomationController {
     public Result executeSkill(@PathVariable String skillId, @RequestBody Map<String, Object> params) {
         SkillDiscoveryService.SkillMetadata meta = skillDiscoveryService.getSkill(skillId);
         if (meta == null) return Result.error("技能不存在: " + skillId);
-        
+        // 保证 agent_master 能拿到 platform 参数（从 skill 元数据注入）
+        if (meta.getPlatform() != null && !params.containsKey("platform")) {
+            params.put("platform", meta.getPlatform());
+        }
         PythonSkillRunner.SkillExecutionResult result = pythonSkillRunner.execute(meta, params);
         if (result.isSuccess()) {
             return Result.success(result);

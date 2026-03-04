@@ -30,6 +30,7 @@ request.interceptors.response.use(
             localStorage.removeItem('token');
             localStorage.removeItem('username');
             localStorage.removeItem('role');
+            fetch('/api/auth/clear-session', { method: 'POST' }).catch(() => {});
             window.location.href = '/login';
         }
         console.error('API Error:', error.response?.data || error.message);

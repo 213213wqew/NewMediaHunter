@@ -1,22 +1,47 @@
 import request from '../utils/request';
 import type { Account } from '../types';
 
+export interface AccountStats {
+    accountId: number;
+    totalFans?: number;
+    totalReads?: number;
+    totalRevenue?: string;
+    yesterdayFans?: number;
+    yesterdayReads?: number;
+    yesterdayRevenue?: string;
+    updatedAt?: string;
+}
+
 /**
- * 获取所有账号列表
+ * 获取所有账号列表（来自本地文件）
  */
 export function getAccountList() {
     return request.get<Account[]>('/account/list');
 }
 
 /**
- * 保存账号信息
+ * 获取各账号昨日数据（粉丝、阅读、收益）
  */
-export function saveAccount(account: Partial<Account>) {
-    return request.post<Account>('/account/save', account);
+export function getAccountStats() {
+    return request.get<Record<string, AccountStats>>('/account/stats');
 }
 
 /**
- * 删除账号
+ * 更新数据：拉取各账号昨日数据并保存到本地
+ */
+export function refreshAccountStats() {
+    return request.post<Record<string, AccountStats>>('/account/refresh-stats', {}, { timeout: 300000 });
+}
+
+/**
+ * 开始绑定：仅传平台+账号名称，后端弹出登录页，登录成功后 Token 存本地文件
+ */
+export function bindStart(params: { platformKey: string; accountName: string }) {
+    return request.post<Account>('/account/bind-start', params, { timeout: 200000 });
+}
+
+/**
+ * 删除账号（从本地文件移除）
  */
 export function deleteAccount(id: number) {
     return request.delete(`/account/${id}`);

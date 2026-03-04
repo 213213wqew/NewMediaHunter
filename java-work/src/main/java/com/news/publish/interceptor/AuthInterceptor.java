@@ -21,7 +21,9 @@ public class AuthInterceptor implements HandlerInterceptor {
         }
 
         String uri = request.getRequestURI();
-        if (uri.startsWith("/api/auth/login") || uri.startsWith("/api/file/download/")) {
+        if (uri.startsWith("/api/auth/login") || uri.startsWith("/api/auth/save-session")
+                || uri.startsWith("/api/auth/restore-session") || uri.startsWith("/api/auth/clear-session")
+                || uri.startsWith("/api/file/download/")) {
             return true;
         }
 
