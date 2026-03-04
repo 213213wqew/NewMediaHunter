@@ -2,6 +2,9 @@
 java-work/target/
 *.class
 
+# Vue 打包复制到 Java 的静态资源（构建产物，不提交）
+java-work/src/main/resources/static/
+
 # IDE files
 .idea/
 *.iml
