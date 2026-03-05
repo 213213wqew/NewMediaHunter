@@ -211,6 +211,11 @@ public class BaijiahaoAdapter implements PlatformAdapter {
         params.put("videoUrl", videoUrl);
         params.put("summary", article.getSummary());
         params.put("tags", article.getTags());
+        if (article.getPlatformSettings() != null && !article.getPlatformSettings().isBlank()) {
+            try {
+                params.put("platformSettings", new com.fasterxml.jackson.databind.ObjectMapper().readValue(article.getPlatformSettings(), Map.class));
+            } catch (Exception ignored) {}
+        }
         PythonSkillRunner.SkillExecutionResult result = pythonSkillRunner.execute(meta, params);
         if (result != null && !result.isSuccess()) {
             throw new RuntimeException(result.getMessage() != null ? result.getMessage() : "百家号视频发布失败");

@@ -48,7 +48,7 @@
       <aside class="video-sidebar card">
         <div class="sidebar-scroll-wrap">
           <div class="section-title">📡 分发渠道</div>
-          <p class="sidebar-hint">选择需要发布的账号，未勾选的账号不会发布；点击卡片可展开/折叠该平台的详细设置（视频页默认发布类型为「视频」）</p>
+          <p class="sidebar-hint">默认只选中当前已配置平台下的账号；多视频时按「同平台内平分」轮询（每个平台内第 1 个视频→第 1 个账号，第 2 个→第 2 个，依此类推）。点击卡片可展开/折叠详细设置。</p>
           <div v-if="platformList.length === 0" class="loading-hint">正在加载平台列表...</div>
           <div v-else class="account-grid">
           <div v-for="plat in platformList" :key="plat.id" class="platform-config-card">
@@ -88,68 +88,109 @@
                   </label>
                 </div>
               </div>
-              <div class="settings-grid">
-                <div class="mini-form-group">
-                  <label>📝 发布类型</label>
-                  <select v-model="(form.platformSettings as any)[plat.platformKey].publishType" class="mini-input">
-                    <option value="news">图文</option>
-                    <option value="video">视频</option>
-                    <option value="dynamic">动态</option>
-                  </select>
-                </div>
-                <div class="mini-form-group">
-                  <label>🗂️ 内容分类</label>
-                  <select v-model="(form.platformSettings as any)[plat.platformKey].category" class="mini-input">
-                    <option value="">-- 选择分类 --</option>
-                    <option>科技互联网</option>
-                    <option>财经金融</option>
-                    <option>生活方式</option>
-                    <option>娱乐明星</option>
-                    <option>体育赛事</option>
-                  </select>
-                </div>
-              </div>
-              <div class="mini-form-group" style="margin-top: 10px;">
-                <label>🏷️ {{ plat.platformKey === 'bjh' || plat.platformKey === 'baijiahao' ? '实时流量话题' : '来源标签' }}</label>
-                <input
-                  v-model="(form.platformSettings as any)[plat.platformKey].tags"
-                  class="mini-input"
-                  :placeholder="['bjh', 'baijiahao'].includes(plat.platformKey) ? '辅助话题...' : '标签1, 标签2...'"
-                />
-                <div v-if="(platformTopics as any)[plat.platformKey]?.length > 0" class="mini-topic-pool">
-                  <div class="pool-header">
-                    <div class="pool-title">🔥 实时热点池 (点击锁定主话题)</div>
-                  </div>
-                  <div class="pool-list">
-                    <template v-if="['bjh', 'baijiahao'].includes(plat.platformKey)">
-                      <span
-                        class="pool-item special-command"
-                        :class="{ active: (form.platformSettings as any)[plat.platformKey]?.selectedTopic === '__DEFAULT__' }"
-                        @click.stop="handleTopicClick(plat.platformKey, '__DEFAULT__')"
-                      >
-                        🌟 选用默认话题
-                      </span>
-                      <span
-                        class="pool-item special-command"
-                        :class="{ active: (form.platformSettings as any)[plat.platformKey]?.selectedTopic === '__HOTTEST__' }"
-                        @click.stop="handleTopicClick(plat.platformKey, '__HOTTEST__')"
-                      >
-                        🔥 选用今日第一热点
-                      </span>
-                    </template>
-                    <span
-                      v-for="(t, idx) in (platformTopics as any)[plat.platformKey]"
-                      :key="idx"
-                      class="pool-item"
-                      :class="{ active: (form.platformSettings as any)[plat.platformKey]?.selectedTopic === t.topic }"
-                      @click.stop="handleTopicClick(plat.platformKey, t.topic)"
+              <!-- 百家号专属：分类 + 活动投稿（与百家号后台一致） -->
+              <template v-if="isBaijiahao(plat)">
+                <div class="mini-form-group bajiahao-category-row">
+                  <label class="bajiahao-label">
+                    分类
+                    <span class="bajiahao-info-icon" title="选择内容分类">ⓘ</span>
+                  </label>
+                  <select
+                    v-model="(form.platformSettings as any)[plat.platformKey].category"
+                    class="mini-input bajiahao-category-select"
+                  >
+                    <option
+                      v-for="opt in BAJIAHAO_CATEGORIES"
+                      :key="opt.value || '__empty__'"
+                      :value="opt.value"
                     >
-                      #{{ t.topic.replace(/#/g, '') }}#
-                    </span>
+                      {{ opt.label }}
+                    </option>
+                  </select>
+                </div>
+                <div class="mini-form-group bajiahao-activity-block">
+                  <label class="bajiahao-label">活动投稿</label>
+                  <div class="bajiahao-activity-grid">
+                    <button
+                      v-for="act in BAJIAHAO_ACTIVITIES"
+                      :key="act"
+                      type="button"
+                      class="bajiahao-activity-chip"
+                      :class="{ active: (form.platformSettings as any)[plat.platformKey]?.selectedActivity === act }"
+                      @click="(form.platformSettings as any)[plat.platformKey].selectedActivity = (form.platformSettings as any)[plat.platformKey]?.selectedActivity === act ? '' : act"
+                    >
+                      {{ act }}
+                    </button>
+                  </div>
+                  <a href="javascript:void(0)" class="bajiahao-more-activities">更多活动 &gt;</a>
+                </div>
+              </template>
+              <!-- 视频页隐藏：发布类型、内容分类、来源标签（仅隐藏 UI，数据仍提交给后端） -->
+              <div class="video-settings-hidden">
+                <div class="settings-grid">
+                  <div class="mini-form-group">
+                    <label>📝 发布类型</label>
+                    <select v-model="(form.platformSettings as any)[plat.platformKey].publishType" class="mini-input">
+                      <option value="news">图文</option>
+                      <option value="video">视频</option>
+                      <option value="dynamic">动态</option>
+                    </select>
+                  </div>
+                  <div class="mini-form-group">
+                    <label>🗂️ 内容分类</label>
+                    <select v-model="(form.platformSettings as any)[plat.platformKey].category" class="mini-input">
+                      <option value="">-- 选择分类 --</option>
+                      <option>科技互联网</option>
+                      <option>财经金融</option>
+                      <option>生活方式</option>
+                      <option>娱乐明星</option>
+                      <option>体育赛事</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="mini-form-group" style="margin-top: 10px;">
+                  <label>🏷️ {{ plat.platformKey === 'bjh' || plat.platformKey === 'baijiahao' ? '实时流量话题' : '来源标签' }}</label>
+                  <input
+                    v-model="(form.platformSettings as any)[plat.platformKey].tags"
+                    class="mini-input"
+                    :placeholder="['bjh', 'baijiahao'].includes(plat.platformKey) ? '辅助话题...' : '标签1, 标签2...'"
+                  />
+                  <div v-if="(platformTopics as any)[plat.platformKey]?.length > 0" class="mini-topic-pool">
+                    <div class="pool-header">
+                      <div class="pool-title">🔥 实时热点池 (点击锁定主话题)</div>
+                    </div>
+                    <div class="pool-list">
+                      <template v-if="['bjh', 'baijiahao'].includes(plat.platformKey)">
+                        <span
+                          class="pool-item special-command"
+                          :class="{ active: (form.platformSettings as any)[plat.platformKey]?.selectedTopic === '__DEFAULT__' }"
+                          @click.stop="handleTopicClick(plat.platformKey, '__DEFAULT__')"
+                        >
+                          🌟 选用默认话题
+                        </span>
+                        <span
+                          class="pool-item special-command"
+                          :class="{ active: (form.platformSettings as any)[plat.platformKey]?.selectedTopic === '__HOTTEST__' }"
+                          @click.stop="handleTopicClick(plat.platformKey, '__HOTTEST__')"
+                        >
+                          🔥 选用今日第一热点
+                        </span>
+                      </template>
+                      <span
+                        v-for="(t, idx) in (platformTopics as any)[plat.platformKey]"
+                        :key="idx"
+                        class="pool-item"
+                        :class="{ active: (form.platformSettings as any)[plat.platformKey]?.selectedTopic === t.topic }"
+                        @click.stop="handleTopicClick(plat.platformKey, t.topic)"
+                      >
+                        #{{ t.topic.replace(/#/g, '') }}#
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div class="mini-schedule">
+              <!-- 定时不在此页设置，仅隐藏 UI，数据仍保留 -->
+              <div class="video-settings-hidden mini-schedule">
                 <label class="schedule-label">
                   <input type="checkbox" v-model="(form.platformSettings as any)[plat.platformKey].isScheduled" /> 定时发布
                 </label>
@@ -168,7 +209,7 @@
         </div>
 
           <div v-if="form.selectedAccountIds.length > 0" class="selected-summary selected-summary-visible">
-            已选 <strong>{{ form.selectedAccountIds.length }}</strong> 个账号（仅向勾选账号发布）
+            已选 <strong>{{ form.selectedAccountIds.length }}</strong> 个账号（多视频将按同平台内轮询平分）
           </div>
 
           <div class="publish-actions">
@@ -206,6 +247,55 @@ interface VideoItem {
   videoUrl: string;
 }
 
+// 作品声明：value 与头条页「作品声明」选项文案一致（含标点），直接传给技能点击
+const WORK_STATEMENT_OPTIONS = [
+  { value: '取自站外', label: '取自站外' },
+  { value: '引用站内', label: '引用站内' },
+  { value: '自行拍摄', label: '自行拍摄' },
+  { value: 'AI生成', label: 'AI生成' },
+  { value: '虚构演绎，故事经历', label: '虚构演绎，故事经历' },
+  { value: '投资观点，仅供参考', label: '投资观点，仅供参考' },
+  { value: '健康医疗分享，仅供参考', label: '健康医疗分享，仅供参考' },
+];
+
+/** 百家号 - 分类（与百家号后台一致） */
+const BAJIAHAO_CATEGORIES = [
+  { value: '', label: '-- 选择分类 --' },
+  { value: '法律/案件解读', label: '法律 / 案件解读' },
+  { value: '生活', label: '生活' },
+  { value: '科技', label: '科技' },
+  { value: '娱乐', label: '娱乐' },
+  { value: '财经', label: '财经' },
+  { value: '教育', label: '教育' },
+  { value: '体育', label: '体育' },
+  { value: '汽车', label: '汽车' },
+  { value: '游戏', label: '游戏' },
+  { value: '旅游', label: '旅游' },
+  { value: '军事', label: '军事' },
+  { value: '国际', label: '国际' },
+  { value: '时尚', label: '时尚' },
+  { value: '母婴', label: '母婴' },
+  { value: '美食', label: '美食' },
+  { value: '其他', label: '其他' },
+];
+
+/** 百家号 - 活动投稿（与百家号后台活动一致，可后续接接口） */
+const BAJIAHAO_ACTIVITIES = [
+  '原来你是这样的惊蛰',
+  'AIGC武侠影像创作',
+  '春天的第一个AI转场',
+  'AIGC抽象搞笑剧场',
+  'AIGC看热点第二季',
+  '遇见初春好风景',
+  '我们的2030',
+  '来大同撞好运',
+  '来北京撞好运',
+  'AI动漫主题赛',
+  'AIGC未来创作联赛3期',
+  '「北京范儿」短视频大赛',
+  '热点早班车',
+];
+
 const VIDEO_EXTS = ['.mp4', '.mov', '.avi', '.wmv', '.webm', '.mkv', '.m4v'];
 function isVideoFile(file: File): boolean {
   const name = (file.name || '').toLowerCase();
@@ -214,6 +304,8 @@ function isVideoFile(file: File): boolean {
 
 let nextId = 1;
 const fileInputRef = ref<HTMLInputElement | null>(null);
+/** 上次选择文件所在目录（File System Access API），下次打开时定位到该文件夹 */
+const lastDirHandleRef = ref<FileSystemDirectoryHandle | null>(null);
 const platformList = ref<Platform[]>([]);
 const accountList = ref<Account[]>([]);
 const publishing = ref(false);
@@ -230,7 +322,11 @@ const form = reactive({
     publishType: string;
     isScheduled: boolean;
     scheduledTime: string;
+    /** 作品声明单选（如：取自站外、AI生成等） */
+    workStatement: string;
     selectedSkillId?: string;
+    /** 百家号专用：活动投稿选中的活动名称 */
+    selectedActivity?: string;
   }>,
 });
 
@@ -267,7 +363,43 @@ function toggleAccountSelection(accountId: number) {
   }
 }
 
-function openFilePicker() {
+async function openFilePicker() {
+  const win = window as Window & { showOpenFilePicker?: (opts?: { multiple?: boolean; types?: { description: string; accept: Record<string, string[]> }[]; startIn?: FileSystemDirectoryHandle }) => Promise<FileSystemFileHandle[]> };
+  if (typeof win.showOpenFilePicker === 'function') {
+    try {
+      const opts: { multiple: true; types: { description: string; accept: Record<string, string[]> }[]; startIn?: FileSystemDirectoryHandle } = {
+        multiple: true,
+        types: [{ description: '视频', accept: { 'video/*': ['.mp4', '.mov', '.avi', '.wmv', '.webm', '.mkv', '.m4v'] } }],
+      };
+      if (lastDirHandleRef.value) opts.startIn = lastDirHandleRef.value;
+      const handles = await win.showOpenFilePicker(opts);
+      if (!handles.length) return;
+      const files: File[] = [];
+      for (const h of handles) {
+        files.push(await h.getFile());
+      }
+      try {
+        const first = handles[0];
+        if (first && 'getParent' in first && typeof (first as FileSystemFileHandle).getParent === 'function') {
+          lastDirHandleRef.value = await (first as FileSystemFileHandle).getParent();
+        }
+      } catch (_) {}
+      const videoFiles = files.filter(isVideoFile);
+      if (videoFiles.length === 0) {
+        ElMessage.warning('未选中视频文件（支持 MP4、MOV、AVI、WMV 等）');
+        return;
+      }
+      for (const file of videoFiles) {
+        const name = file.name.replace(/\.[^.]+$/, '') || file.name;
+        videos.push({ id: nextId++, title: name, videoUrl: file.name });
+      }
+      ElMessage.success(`已添加 ${videoFiles.length} 个视频，下次将从此文件夹打开`);
+      return;
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+      ElMessage.warning('当前浏览器不支持记忆文件夹，使用传统选择方式');
+    }
+  }
   fileInputRef.value?.click();
 }
 
@@ -305,6 +437,10 @@ function toggleExpanded(platformKey: string) {
   expandedPlatforms[platformKey] = !expandedPlatforms[platformKey];
 }
 
+function isBaijiahao(plat: Platform): boolean {
+  return plat.platformKey === 'bjh' || plat.platformKey === 'baijiahao';
+}
+
 function initPlatformSettingsForPlatform(key: string) {
   if ((form.platformSettings as any)[key]) return;
   (form.platformSettings as any)[key] = {
@@ -314,6 +450,8 @@ function initPlatformSettingsForPlatform(key: string) {
     publishType: 'video',
     isScheduled: false,
     scheduledTime: '',
+    workStatement: '自行拍摄',
+    ...(['bjh', 'baijiahao'].includes(key) ? { selectedActivity: '' as string } : {}),
   };
 }
 
@@ -337,6 +475,18 @@ function getPlatformIcon(key: string): string {
   return map[key] || '📤';
 }
 
+/** 将已选账号按平台分组，用于同平台内轮询平分 */
+function getSelectedAccountsByPlatform(): Map<number, number[]> {
+  const byPlatform = new Map<number, number[]>();
+  for (const acc of accountList.value) {
+    if (!form.selectedAccountIds.includes(acc.id)) continue;
+    const arr = byPlatform.get(acc.platformId) || [];
+    arr.push(acc.id);
+    byPlatform.set(acc.platformId, arr);
+  }
+  return byPlatform;
+}
+
 async function handlePublish() {
   const list = validVideos.value;
   const accountIds = form.selectedAccountIds.slice();
@@ -345,8 +495,15 @@ async function handlePublish() {
   publishStatus.value = '';
   publishStatusText.value = '';
   try {
+    const byPlatform = getSelectedAccountsByPlatform();
     let successCount = 0;
-    for (const v of list) {
+    // 按「同平台内平分」：每个视频在每个平台内轮询一个账号，不跨平台混排
+    for (let i = 0; i < list.length; i++) {
+      const v = list[i];
+      const assignedAccountIds: number[] = [];
+      for (const [, platformAccountIds] of byPlatform) {
+        assignedAccountIds.push(platformAccountIds[i % platformAccountIds.length]);
+      }
       const article = await saveArticle({
         title: v.title.trim(),
         content: '',
@@ -356,13 +513,16 @@ async function handlePublish() {
         platformSettings: Object.keys(form.platformSettings).length ? JSON.stringify(form.platformSettings) : undefined,
       });
       if (article?.id) {
-        await submitPublishTask({ articleId: article.id, accountIds });
+        await submitPublishTask({ articleId: article.id, accountIds: assignedAccountIds });
         successCount++;
       }
     }
 
     publishStatus.value = 'success';
-    publishStatusText.value = `分发完成：已提交 ${list.length} 个视频至 ${accountIds.length} 个账号，请到「我的发文」查看`;
+    const platformCount = byPlatform.size;
+    publishStatusText.value = platformCount === 1 && accountIds.length === 1
+      ? `分发完成：${list.length} 个视频已提交至 1 个账号，请到「我的发文」查看`
+      : `分发完成：${list.length} 个视频已按平台平分至 ${accountIds.length} 个账号，请到「我的发文」查看`;
     ElMessage.success(publishStatusText.value);
     videos.splice(0, videos.length);
   } catch (err: any) {
@@ -393,8 +553,9 @@ onMounted(async () => {
     }
     platformList.value = allPlatforms;
     accountList.value = accounts || [];
-    // 默认不勾选任何账号，用户需在分发渠道中手动勾选要发布的账号（未勾选则不发）
-    form.selectedAccountIds = [];
+    // 默认只选中「当前展示的平台」下的账号（例如只配置了头条则只选头条账号）
+    const platformIds = new Set(allPlatforms.map((p: Platform) => p.id));
+    form.selectedAccountIds = (accounts || []).filter((a: Account) => platformIds.has(a.platformId)).map((a: Account) => a.id);
     form.selectedPlatforms = allPlatforms.map((p: Platform) => p.platformKey);
     allPlatforms.forEach((p: Platform) => initPlatformSettingsForPlatform(p.platformKey));
     allPlatforms.forEach((p: Platform) => {
@@ -435,7 +596,7 @@ onMounted(async () => {
 
 .video-layout {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: 1fr 420px;
   gap: 24px;
   align-items: stretch;
   min-height: 0;
@@ -686,6 +847,71 @@ onMounted(async () => {
   white-space: nowrap;
 }
 
+/* 百家号专属：分类 + 活动投稿 */
+.bajiahao-category-row {
+  margin-top: 14px;
+}
+.bajiahao-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-primary, #e2e8f0);
+  margin-bottom: 8px;
+}
+.bajiahao-info-icon {
+  font-size: 12px;
+  color: #94a3b8;
+  cursor: help;
+  opacity: 0.85;
+}
+.bajiahao-category-select {
+  width: 100%;
+  max-width: 280px;
+}
+.bajiahao-activity-block {
+  margin-top: 16px;
+}
+.bajiahao-activity-block > .bajiahao-label {
+  margin-bottom: 10px;
+}
+.bajiahao-activity-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.bajiahao-activity-chip {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text-primary, #e2e8f0);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.bajiahao-activity-chip:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #fff;
+}
+.bajiahao-activity-chip.active {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 500;
+}
+.bajiahao-more-activities {
+  font-size: 12px;
+  color: #60a5fa;
+  text-decoration: none;
+}
+.bajiahao-more-activities:hover {
+  text-decoration: underline;
+}
+
 .platform-settings-box {
   padding: 16px;
   background: rgba(15, 23, 42, 0.6);
@@ -729,6 +955,10 @@ onMounted(async () => {
   background: rgba(0, 0, 0, 0.6);
 }
 .skill-highlight .mini-input { border-color: rgba(59, 130, 246, 0.4); }
+/* 视频页隐藏：发布类型、内容分类、来源标签，仅隐藏 UI，数据照常提交 */
+.video-settings-hidden {
+  display: none !important;
+}
 .mini-schedule {
   margin-top: 12px;
   padding-top: 10px;
@@ -841,6 +1071,11 @@ onMounted(async () => {
   font-weight: 700;
   font-size: 14px;
 }
+.btn-secondary {
+  background: var(--bg-secondary, #475569);
+  color: #fff;
+  border: none;
+}
 .publish-btn {
   width: 100%;
   padding: 12px 20px;
@@ -850,5 +1085,58 @@ onMounted(async () => {
 .publish-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+.work-statement-block {
+  margin-top: 14px;
+}
+.work-statement-block > label:first-child {
+  font-size: 12px;
+  color: var(--text-muted, #94a3b8);
+  margin-bottom: 8px;
+  display: block;
+}
+.work-statement-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+  max-height: none;
+}
+.work-statement-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-primary, #e2e8f0);
+}
+.work-statement-item input[type="radio"],
+.work-statement-item input[type="checkbox"] {
+  flex-shrink: 0;
+}
+.work-statement-item input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.2);
+  position: relative;
+  cursor: pointer;
+}
+.work-statement-item input[type="radio"]:checked {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.25);
+}
+.work-statement-item input[type="radio"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  background: #3b82f6;
+  border-radius: 1px;
 }
 </style>

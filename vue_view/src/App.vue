@@ -1,5 +1,5 @@
 <template>
-  <div class="layout" v-if="$route.path !== '/login'">
+  <div class="layout" :data-theme="theme" v-if="$route.path !== '/login'">
     <!-- 侧边栏 -->
     <aside class="sidebar">
       <div class="sidebar-logo">
@@ -68,8 +68,9 @@
           系统运行中
         </div>
         <div class="topbar-actions">
-          <button class="btn btn-primary" @click="$router.push('/article')">
-            + 新建稿件
+          <button type="button" class="theme-toggle" :title="theme === 'dark' ? '切换为亮色' : '切换为暗色'" @click="toggleTheme">
+            <span v-if="theme === 'dark'">☀️ 亮色</span>
+            <span v-else>🌙 暗色</span>
           </button>
         </div>
       </header>
@@ -85,13 +86,26 @@
 
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router';
-import { ref, watch } from 'vue';
+import { ref, watch, onMounted } from 'vue';
 
 const $route = useRoute();
 const router = useRouter();
 
 const userName = ref('');
 const userRole = ref('');
+const theme = ref<'light' | 'dark'>('dark');
+
+const THEME_KEY = 'app-theme';
+
+onMounted(() => {
+  const saved = localStorage.getItem(THEME_KEY) as 'light' | 'dark' | null;
+  if (saved === 'light' || saved === 'dark') theme.value = saved;
+});
+
+function toggleTheme() {
+  theme.value = theme.value === 'dark' ? 'light' : 'dark';
+  localStorage.setItem(THEME_KEY, theme.value);
+}
 
 watch(
   () => $route.path,

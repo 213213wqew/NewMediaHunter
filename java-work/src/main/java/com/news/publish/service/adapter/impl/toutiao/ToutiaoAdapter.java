@@ -113,15 +113,27 @@ public class ToutiaoAdapter implements PlatformAdapter {
         params.put("videoUrl", videoUrl);
         params.put("summary", article.getSummary());
         params.put("tags", article.getTags());
+        if (article.getPlatformSettings() != null && !article.getPlatformSettings().isBlank()) {
+            try {
+                params.put("platformSettings", new com.fasterxml.jackson.databind.ObjectMapper().readValue(article.getPlatformSettings(), Map.class));
+            } catch (Exception ignored) {}
+        }
         PythonSkillRunner.SkillExecutionResult result = pythonSkillRunner.execute(meta, params);
         if (result != null && result.isSuccess() && result.getData() != null) {
-            if (result.getData().get("platformArticleId") != null) {
-                task.setPlatformArticleId(String.valueOf(result.getData().get("platformArticleId")));
+            boolean skippedPublish = Boolean.TRUE.equals(result.getData().get("skipped_publish"));
+            if (skippedPublish) {
+                task.setPublishStatus(2);
+                task.setErrorMessage("已填写未发布（测试）");
+            } else {
+                if (result.getData().get("platformArticleId") != null) {
+                    task.setPlatformArticleId(String.valueOf(result.getData().get("platformArticleId")));
+                }
+                if (result.getUrl() != null) task.setPlatformArticleUrl(result.getUrl());
+                else if (result.getData().get("final_url") != null) task.setPlatformArticleUrl(String.valueOf(result.getData().get("final_url")));
             }
-            if (result.getUrl() != null) task.setPlatformArticleUrl(result.getUrl());
-            else if (result.getData().get("final_url") != null) task.setPlatformArticleUrl(String.valueOf(result.getData().get("final_url")));
         }
-        if (task.getPlatformArticleId() == null) {
+        boolean skipped = result != null && result.getData() != null && Boolean.TRUE.equals(result.getData().get("skipped_publish"));
+        if (!skipped && task.getPlatformArticleId() == null) {
             task.setPlatformArticleId("tt_video_" + System.currentTimeMillis() / 1000);
             task.setPlatformArticleUrl("https://www.toutiao.com/video/" + task.getPlatformArticleId());
         }

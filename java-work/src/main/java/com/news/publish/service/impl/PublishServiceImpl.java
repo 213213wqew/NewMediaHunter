@@ -14,11 +14,11 @@ import com.news.publish.service.adapter.PlatformAdapter;
 import com.news.publish.interceptor.UserContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.concurrent.Executor;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -37,6 +37,7 @@ public class PublishServiceImpl implements PublishService {
     private final List<PlatformAdapter> adapters;
     private final com.news.publish.service.MediaService mediaService;
     private final ComplianceService complianceService;
+    private final Executor taskExecutor;
 
     private void recordLog(Long taskId, String level, String message, String request, String response, Integer status, Exception e) {
         try {
@@ -64,7 +65,7 @@ public class PublishServiceImpl implements PublishService {
         List<PublishTask> dueTasks = taskFileStorage.findByPublishStatusAndScheduledTimeBefore(0, now);
         if (!dueTasks.isEmpty()) {
             log.info("定时分发轮询: 发现 {} 个到期任务", dueTasks.size());
-            dueTasks.forEach(task -> executePublishTask(task.getId()));
+            dueTasks.forEach(task -> taskExecutor.execute(() -> doExecutePublishTask(task.getId())));
         }
     }
 
@@ -94,15 +95,19 @@ public class PublishServiceImpl implements PublishService {
             tasks.add(taskFileStorage.save(task));
             
             if (request.getScheduledTime() == null || request.getScheduledTime().isBefore(LocalDateTime.now())) {
-                executePublishTask(task.getId());
+                taskExecutor.execute(() -> doExecutePublishTask(task.getId()));
             }
         }
         return tasks;
     }
 
-    @Async("taskExecutor")
     @Override
     public void executePublishTask(Long taskId) {
+        taskExecutor.execute(() -> doExecutePublishTask(taskId));
+    }
+
+    /** 实际执行发布逻辑，由线程池调用，实现多账号并行（一账号一浏览器） */
+    private void doExecutePublishTask(Long taskId) {
         PublishTask task = taskFileStorage.findById(taskId).orElse(null);
         if (task == null) return;
 
@@ -155,10 +160,16 @@ public class PublishServiceImpl implements PublishService {
                 adapter.publishArticle(article, account, task, cleanedContent);
             }
 
-            task.setPublishStatus(3); // 成功
-            task.setErrorMessage(null);
-            taskFileStorage.save(task);
-            recordLog(taskId, "INFO", "文章已成功同步至 " + platformKey + "！文章ID: " + task.getPlatformArticleId(), null, "SUCCESS", 200, null);
+            // 2=已填写未发布（技能里屏蔽了最终发布）时不记为成功
+            if (task.getPublishStatus() != null && task.getPublishStatus() == 2) {
+                taskFileStorage.save(task);
+                recordLog(taskId, "INFO", "视频已填写完成，未点击发布（测试）", null, null, 200, null);
+            } else {
+                task.setPublishStatus(3); // 成功
+                task.setErrorMessage(null);
+                taskFileStorage.save(task);
+                recordLog(taskId, "INFO", "文章已成功同步至 " + platformKey + "！文章ID: " + task.getPlatformArticleId(), null, "SUCCESS", 200, null);
+            }
 
         } catch (Exception e) {
             log.error("分发任务执行异常: taskId={}", taskId, e);

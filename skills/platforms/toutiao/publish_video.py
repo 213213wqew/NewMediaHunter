@@ -14,12 +14,25 @@ if _ROOT not in sys.path:
 from core.inject import inject_cookies
 from platforms.toutiao.config import VIDEO_UPLOAD_URL, LOGIN_WAIT_TIMEOUT_MS
 
+
 def run(params: dict, session_dir: str, cookie_json_str: str) -> dict:
     title = params.get("title", "")
     video_path = params.get("videoPath") or params.get("videoUrl")
     tags = params.get("tags", "")
     summary = params.get("summary", "")
-    
+    # 本技能先屏蔽最终发布：不点「发布」按钮，仅填表单+选声明，便于测试
+    skip_final_publish = params.get("skipPublish", True)
+
+    # 作品声明：直接使用前端传过来的文案，不做映射，便于后期只改前端即可
+    work_statement_text = ""
+    ps = params.get("platformSettings") or {}
+    if isinstance(ps, dict):
+        toutiao_ps = ps.get("toutiao") or {}
+        if isinstance(toutiao_ps, dict):
+            work_statement_text = (toutiao_ps.get("workStatement") or "").strip()
+    if not work_statement_text:
+        work_statement_text = (params.get("workStatement") or "").strip()
+
     if not video_path:
         return {"success": False, "message": "未提供视频路径"}
     
@@ -199,19 +212,42 @@ def run(params: dict, session_dir: str, cookie_json_str: str) -> dict:
                         time.sleep(1)
                         page.keyboard.press("Enter")
 
-            # 4. 发布
+            # 3.5 作品声明：等待 3 秒后再选择，点选 label（勾选 checkbox）。高级设置默认已展开，不要点「高级设置」否则会折叠
+            if work_statement_text:
+                time.sleep(3)
+                print(f"DEBUG: 选择作品声明（前端传入）: {work_statement_text!r}")
+                try:
+                    # 头条页结构：label.byte-checkbox.checkbox-item 内 span.byte-checkbox-inner-text 为文案，需点 label 才能勾选
+                    text_for_match = work_statement_text.replace("、", "，").strip()
+                    st_loc = page.locator("label.byte-checkbox.checkbox-item").filter(has_text=text_for_match).first
+                    if st_loc.count() == 0:
+                        st_loc = page.locator("label.byte-checkbox").filter(has_text=text_for_match).first
+                    if st_loc.count() == 0:
+                        st_loc = page.locator("span.byte-checkbox-inner-text").filter(has_text=text_for_match).first
+                    if st_loc.count() == 0:
+                        st_loc = page.get_by_text(work_statement_text, exact=False).first
+                    if st_loc.count() > 0:
+                        st_loc.scroll_into_view_if_needed()
+                        time.sleep(0.5)
+                        st_loc.click()
+                        print("DEBUG: 已选择作品声明")
+                    else:
+                        print(f"DEBUG: 未找到作品声明选项: {work_statement_text!r}")
+                except Exception as e:
+                    print(f"DEBUG: 选择作品声明异常: {e}")
+
+            # 4. 发布（已屏蔽：现在不执行发布，仅填表单+作品声明）
+            print("DEBUG: 已屏蔽最终发布，不点击发布按钮")
+            time.sleep(3)
             is_draft = params.get("draft", False)
             if is_draft:
-                print("DEBUG: 存草稿")
                 draft_btn = page.get_by_text("存草稿", exact=True).first
                 if draft_btn.count() > 0:
                     draft_btn.click()
             else:
-                print("DEBUG: 确认发布")
                 publish_btn = page.get_by_text("发布", exact=True).first
                 if publish_btn.count() > 0:
                     publish_btn.click()
-
             time.sleep(5)
             return {"success": True, "message": "视频发布任务已提交", "final_url": page.url}
 
