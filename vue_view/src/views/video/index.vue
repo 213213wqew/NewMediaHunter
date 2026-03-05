@@ -380,8 +380,9 @@ async function openFilePicker() {
       }
       try {
         const first = handles[0];
-        if (first && 'getParent' in first && typeof (first as FileSystemFileHandle).getParent === 'function') {
-          lastDirHandleRef.value = await (first as FileSystemFileHandle).getParent();
+        const withParent = first as FileSystemFileHandle & { getParent?: () => Promise<FileSystemDirectoryHandle> };
+        if (first && typeof withParent.getParent === 'function') {
+          lastDirHandleRef.value = await withParent.getParent();
         }
       } catch (_) {}
       const videoFiles = files.filter(isVideoFile);
@@ -500,9 +501,11 @@ async function handlePublish() {
     // 按「同平台内平分」：每个视频在每个平台内轮询一个账号，不跨平台混排
     for (let i = 0; i < list.length; i++) {
       const v = list[i];
+      if (!v) continue;
       const assignedAccountIds: number[] = [];
       for (const [, platformAccountIds] of byPlatform) {
-        assignedAccountIds.push(platformAccountIds[i % platformAccountIds.length]);
+        const id = platformAccountIds[i % platformAccountIds.length];
+        if (id !== undefined) assignedAccountIds.push(id);
       }
       const article = await saveArticle({
         title: v.title.trim(),

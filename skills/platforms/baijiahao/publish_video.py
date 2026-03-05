@@ -77,16 +77,23 @@ def run(params: dict, session_dir: str, cookie_json_str: str) -> dict:
                 fc_info.value.set_files(video_path)
                 print("DEBUG: 已通过文件选择框设置文件")
 
-            # 等待上传完成：出现「上传成功」或进入编辑页（封面/标题区域出现）
-            print("DEBUG: 等待视频上传完成...")
+            # 等待上传完成：进度条 role=progressbar 的 aria-valuenow 为 100 表示 100%
+            # 页面结构：div.cheetah-progress-* role="progressbar" aria-valuenow="77" aria-valuemin="0" aria-valuemax="100"
+            print("DEBUG: 等待视频上传完成（进度条 100%）...")
             try:
-                page.locator("text=上传成功").first.wait_for(state="visible", timeout=120000)
+                page.wait_for_function(
+                    "() => { const bar = document.querySelector('[role=\"progressbar\"]'); return bar && (bar.getAttribute('aria-valuenow') === '100' || Number(bar.getAttribute('aria-valuenow')) >= 100); }",
+                    timeout=120000,
+                )
+                print("DEBUG: 进度条已到 100%，上传完成")
             except Exception:
                 try:
-                    page.locator("text=上传完成").first.wait_for(state="visible", timeout=120000)
+                    page.locator("text=上传成功").first.wait_for(state="visible", timeout=15000)
                 except Exception:
-                    # 无明确文案时，等封面或标题区域出现（表示已进入编辑态）
-                    page.wait_for_selector("text=封面", timeout=120000)
+                    try:
+                        page.locator("text=上传完成").first.wait_for(state="visible", timeout=15000)
+                    except Exception:
+                        page.wait_for_selector("text=封面", timeout=15000)
             print("DEBUG: 第一步完成，视频已上传")
 
             # ========== 第二步：打开封面选择封面 ==========
@@ -155,18 +162,18 @@ def run(params: dict, session_dir: str, cookie_json_str: str) -> dict:
                         page.keyboard.press("Enter")
 
             # ========== 发布或存草稿 ==========
-            time.sleep(1)
-            if is_draft:
-                draft_btn = page.get_by_text("存草稿", exact=True).first
-                if draft_btn.count() > 0:
-                    draft_btn.click()
-                    print("DEBUG: 已点击存草稿")
-            else:
-                pub_btn = page.get_by_text("发布", exact=True).first
-                if pub_btn.count() > 0:
-                    pub_btn.click()
-                    print("DEBUG: 已点击发布")
-            time.sleep(5)
+            time.sleep(1000)
+            # if is_draft:
+            #     draft_btn = page.get_by_text("存草稿", exact=True).first
+            #     if draft_btn.count() > 0:
+            #         draft_btn.click()
+            #         print("DEBUG: 已点击存草稿")
+            # else:
+            #     pub_btn = page.get_by_text("发布", exact=True).first
+            #     if pub_btn.count() > 0:
+            #         pub_btn.click()
+            #         print("DEBUG: 已点击发布")
+            # time.sleep(5)
             return {"success": True, "message": "视频发布流程已执行", "final_url": page.url}
         except Exception as e:
             return {"success": False, "message": str(e)}
