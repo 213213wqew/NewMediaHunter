@@ -549,6 +549,8 @@ watch(keyword, saveState);
 watch(filters, saveState, { deep: true });
 
 onMounted(() => {
+  // 仅恢复上一次抓取结果与筛选条件，不自动发起抓取；
+  // 用户点击「发现热点」按钮时才真正调用 handleSearch。
   loadSavedState();
   const cachedAll = sessionStorage.getItem('hotNewsAllList');
   if (cachedAll) {
@@ -557,10 +559,11 @@ onMounted(() => {
       hasSearched.value = true;
     } catch (e) {
       console.error('Failed to restore cached hot news', e);
-      handleSearch();
+      allNewsList.value = [];
+      hasSearched.value = false;
     }
   } else {
-    handleSearch();
+    hasSearched.value = false;
   }
 });
 

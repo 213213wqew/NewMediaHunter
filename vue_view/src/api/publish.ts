@@ -2,10 +2,17 @@ import request from '../utils/request';
 import type { PublishTask } from '../types';
 
 /**
- * 提交发布任务接口
+ * 提交发布任务接口（单条）
  */
 export function submitPublishTask(data: { articleId: number; accountIds: number[]; scheduledTime?: string }) {
     return request.post<PublishTask[]>('/publish/submit', data);
+}
+
+/**
+ * 视频批量发布：多视频按账号轮询分配，后端按账号串行、最多 9 账号并发
+ */
+export function submitVideoBatch(data: { articleIds: number[]; accountIds: number[]; scheduledTime?: string }) {
+    return request.post<PublishTask[]>('/publish/submit-batch', data);
 }
 
 /**
@@ -13,6 +20,13 @@ export function submitPublishTask(data: { articleId: number; accountIds: number[
  */
 export function getTaskList() {
     return request.get<PublishTask[]>('/publish/tasks');
+}
+
+/**
+ * 获取单个任务状态
+ */
+export function getTaskStatus(taskId: number) {
+    return request.get<PublishTask>(`/publish/tasks/${taskId}`);
 }
 
 /**

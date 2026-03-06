@@ -61,22 +61,51 @@ def run(session_dir: str, cookie_json_str: str, params: dict = None) -> dict:
 
 
 def _parse_yesterday_from_text(text: str) -> dict:
-    """百家号昨日多为「昨日 +21」格式。"""
+    """
+    按上下文解析昨日数据，避免整页按出现顺序错配。
+    页面结构：粉丝量/阅读(播放)量/总收益 各自一块，块内有「昨日 31」「昨日 37.02」等。
+    """
     data = {"yesterdayFans": 0, "yesterdayReads": 0, "yesterdayRevenue": ""}
-    # 昨日 +21 或 昨日 4↑ 或 昨日 +5.37万
-    yesterday_match = re.findall(r"昨日\s*\+?\s*([\d,.]+\d*)\s*万?\s*↑?", text)
-    if len(yesterday_match) >= 1:
-        try:
-            data["yesterdayFans"] = int(float(yesterday_match[0].replace(",", "")))
-        except ValueError:
-            pass
-    if len(yesterday_match) >= 2:
-        data["yesterdayReads"] = _parse_wan(yesterday_match[1])
-    if len(yesterday_match) >= 3:
-        try:
-            data["yesterdayRevenue"] = yesterday_match[2].replace(",", "").strip()
-        except IndexError:
-            pass
+    num_re = r"昨日\s*\+?\s*([\d,.]+\d*)\s*万?\s*↑?"
+
+    # 昨日粉丝：在「粉丝量」或「粉丝数」之后的片段里取第一个「昨日 X」
+    for head in ("粉丝量", "粉丝数"):
+        i = text.find(head)
+        if i >= 0:
+            block = text[i : i + 200]
+            m = re.search(num_re, block)
+            if m:
+                try:
+                    data["yesterdayFans"] = int(float(m.group(1).replace(",", "")))
+                except ValueError:
+                    pass
+            break
+
+    # 昨日阅读：在「阅读(播放)量」或「阅读量」或「播放量」之后的片段里取第一个「昨日 X」（可能是 X万）
+    for head in ("阅读(播放)量", "阅读量", "播放量"):
+        i = text.find(head)
+        if i >= 0:
+            block = text[i : i + 250]
+            m = re.search(num_re, block)
+            if m:
+                data["yesterdayReads"] = _parse_wan(m.group(1))
+            break
+
+    # 昨日收益：在「总收益」之后的片段里取第一个「昨日 X」（一般为小数如 37.02）
+    i = text.find("总收益")
+    if i >= 0:
+        block = text[i : i + 150]
+        m = re.search(num_re, block)
+        if m:
+            data["yesterdayRevenue"] = m.group(1).replace(",", "").strip()
+    if not data["yesterdayRevenue"] and "分润收益" in text:
+        i = text.find("分润收益")
+        if i >= 0:
+            block = text[i : i + 150]
+            m = re.search(num_re, block)
+            if m:
+                data["yesterdayRevenue"] = m.group(1).replace(",", "").strip()
+
     return data
 
 

@@ -56,21 +56,49 @@ def run(session_dir: str, cookie_json_str: str, params: dict = None) -> dict:
 
 
 def _parse_yesterday_from_text(text: str) -> dict:
-    """从页面文本中解析昨日粉丝、昨日阅读、昨日收益。"""
+    """
+    按上下文解析昨日数据，避免整页按出现顺序错配。
+    页面结构：粉丝数/总阅读(播放)量/累计收益 各自一块，块内有「昨日 72↑」「昨日 62,307↑」「昨日无变化」等。
+    """
     data = {"yesterdayFans": 0, "yesterdayReads": 0, "yesterdayRevenue": ""}
-    yesterday_match = re.findall(r"昨日\s*([\d,.]+\d*)\s*↑?", text)
-    if len(yesterday_match) >= 1:
-        try:
-            data["yesterdayFans"] = int(yesterday_match[0].replace(",", ""))
-        except ValueError:
-            pass
-    if len(yesterday_match) >= 2:
-        try:
-            data["yesterdayReads"] = int(yesterday_match[1].replace(",", ""))
-        except ValueError:
-            pass
-    if len(yesterday_match) >= 3:
-        data["yesterdayRevenue"] = yesterday_match[2].replace(",", "").strip()
+    num_re = r"昨日\s*([\d,.]+\d*)\s*↑?"
+
+    # 昨日粉丝：在「粉丝数」之后的片段里取第一个「昨日 X」
+    for head in ("粉丝数", "粉丝"):
+        i = text.find(head)
+        if i >= 0:
+            block = text[i : i + 180]
+            m = re.search(num_re, block)
+            if m:
+                try:
+                    data["yesterdayFans"] = int(float(m.group(1).replace(",", "")))
+                except ValueError:
+                    pass
+            break
+
+    # 昨日阅读：在「总阅读(播放)量」或「总阅读」之后的片段里取第一个「昨日 X」
+    for head in ("总阅读(播放)量", "总阅读", "阅读量"):
+        i = text.find(head)
+        if i >= 0:
+            block = text[i : i + 200]
+            m = re.search(num_re, block)
+            if m:
+                try:
+                    data["yesterdayReads"] = int(float(m.group(1).replace(",", "")))
+                except ValueError:
+                    pass
+            break
+
+    # 昨日收益：在「累计收益」之后的片段里取「昨日 X」或「昨日无变化」
+    i = text.find("累计收益")
+    if i >= 0:
+        block = text[i : i + 120]
+        if "昨日无变化" in block:
+            data["yesterdayRevenue"] = "0"
+        else:
+            m = re.search(num_re, block)
+            if m:
+                data["yesterdayRevenue"] = m.group(1).replace(",", "").strip()
     return data
 
 

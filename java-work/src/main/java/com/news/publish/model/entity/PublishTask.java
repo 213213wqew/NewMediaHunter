@@ -34,6 +34,11 @@ public class PublishTask {
     @Column(nullable = false)
     private Long userId;
 
+    /** 批量发布批次ID，同批任务相同；为空表示单条提交，立即执行 */
+    private Long batchId;
+    /** 该账号在本批次中的任务序号（0,1,2...），用于按账号串行执行 */
+    private Integer accountSequenceIndex;
+
     @PrePersist
     protected void onCreate() {
         createTime = LocalDateTime.now();

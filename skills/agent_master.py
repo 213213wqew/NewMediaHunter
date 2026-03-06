@@ -56,10 +56,15 @@ def run_master():
         except ImportError:
             print(json.dumps({"success": False, "message": f"未找到平台技能: {platform}"}))
         except Exception as e:
-            print(json.dumps({"success": False, "message": f"执行异常: {str(e)}"}))
+            msg = str(e)
+            if "Locked" in msg or "lock" in msg.lower():
+                msg = f"子技能运行锁死（可能是其他实例正在占用该账号）: {msg}"
+            else:
+                msg = f"子技能执行异常: {msg}"
+            print(json.dumps({"success": False, "message": msg}))
 
     except Exception as e:
-        print(json.dumps({"success": False, "message": f"Master 解析错误: {str(e)}"}))
+        print(json.dumps({"success": False, "message": f"Master 入口解析错误 (stdin 可能非 JSON): {str(e)}"}))
 
 
 if __name__ == "__main__":

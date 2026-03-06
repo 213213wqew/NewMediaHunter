@@ -12,7 +12,7 @@
       <div v-for="plat in displayPlatforms" :key="plat.platformKey" class="channel-card" :class="{ 'is-active': activePlatformKeys.includes(plat.platformKey) }" @click="togglePlatform(plat.platformKey)">
         <div class="channel-header">
           <div class="platform-info">
-            <span class="platform-icon">{{ getPlatformIcon(plat.id) }}</span>
+            <span class="platform-icon">{{ getPlatformIcon(plat) }}</span>
             <span class="account-name" style="margin-bottom: 0;">{{ plat.platformName }}</span>
           </div>
           <div @click.stop>
@@ -66,25 +66,22 @@ const displayPlatforms = ref<any[]>([]);
 const activePlatformKeys = ref<string[]>([]);
 const platformStatus = ref<Record<string, { syncing: boolean, count: number, lastUpdate: string | null, tasks: any[] }>>({});
 
+// 当前只保留百家号和今日头条，其他平台暂不展示
+const ALLOWED_PLATFORM_KEYS = ['bjh', 'baijiahao', 'toutiao', 'tt'];
 const builtinPlatforms = [
-  { id: 1, platformName: '百度百家号', platformKey: 'bjh', icon: '🐾' },
-  { id: 2, platformName: '腾讯企鹅号', platformKey: 'qq', icon: '🐧' },
-  { id: 3, platformName: '今日头条号', platformKey: 'tt', icon: '📰' },
-  { id: 4, platformName: '新浪看点', platformKey: 'sina', icon: '👁️' },
-  { id: 5, platformName: '搜狐号', platformKey: 'sohu', icon: '🦊' },
-  { id: 6, platformName: '网易号', platformKey: '163', icon: '🎵' },
-  { id: 7, platformName: '微信公众号', platformKey: 'wx', icon: '💬' },
-  { id: 8, platformName: '小红书', platformKey: 'xhs', icon: '📕' }
+  { id: 1, platformName: '百度百家号', platformKey: 'bjh', icon: '📘' },
+  { id: 2, platformName: '今日头条号', platformKey: 'toutiao', icon: '📰' },
 ];
 
 const loadData = async () => {
   try {
     let plats = await getPlatformList();
     if (!plats || plats.length === 0) {
-        // Fallback to builtin for display if API fails
         plats = builtinPlatforms as any;
     }
-    
+    // 只保留百家号和今日头条
+    plats = (plats as any[]).filter(p => ALLOWED_PLATFORM_KEYS.includes((p.platformKey || '').toLowerCase()));
+
     // Ensure all backend platforms have necessary names/keys
     displayPlatforms.value = plats.map(p => {
         const builtin = builtinPlatforms.find(b => b.id === p.id || b.platformKey === p.platformKey);
@@ -139,8 +136,8 @@ const loadData = async () => {
 
 onMounted(loadData);
 
-const getPlatformIcon = (platformId: any) => {
-    const b = builtinPlatforms.find(x => x.id === Number(platformId) || String(x.id) === String(platformId));
+const getPlatformIcon = (plat: any) => {
+    const b = builtinPlatforms.find(x => x.id === Number(plat?.id) || x.platformKey === plat?.platformKey);
     return b ? b.icon : '🌐';
 };
 

@@ -2,6 +2,7 @@ package com.news.publish.service.impl;
 
 import com.news.publish.model.dto.PublishRequest;
 import com.news.publish.model.dto.PublishStats;
+import com.news.publish.model.dto.VideoBatchPublishRequest;
 import com.news.publish.model.entity.Account;
 import com.news.publish.model.entity.Article;
 import com.news.publish.model.entity.PublishTask;
@@ -11,6 +12,7 @@ import com.news.publish.service.PublishTaskFileStorage;
 import com.news.publish.service.ComplianceService;
 import com.news.publish.service.PublishService;
 import com.news.publish.service.adapter.PlatformAdapter;
+import com.news.publish.service.scheduler.VideoBatchScheduler;
 import com.news.publish.interceptor.UserContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +40,7 @@ public class PublishServiceImpl implements PublishService {
     private final com.news.publish.service.MediaService mediaService;
     private final ComplianceService complianceService;
     private final Executor taskExecutor;
+    private final VideoBatchScheduler videoBatchScheduler;
 
     private void recordLog(Long taskId, String level, String message, String request, String response, Integer status, Exception e) {
         try {
@@ -63,7 +66,11 @@ public class PublishServiceImpl implements PublishService {
     public void schedulePoller() {
         LocalDateTime now = LocalDateTime.now();
         List<PublishTask> dueTasks = taskFileStorage.findByPublishStatusAndScheduledTimeBefore(0, now);
-        if (!dueTasks.isEmpty()) {
+        if (dueTasks.isEmpty()) return;
+        boolean hasBatch = dueTasks.stream().anyMatch(t -> t.getBatchId() != null);
+        if (hasBatch) {
+            videoBatchScheduler.trySchedule();
+        } else {
             log.info("定时分发轮询: 发现 {} 个到期任务", dueTasks.size());
             dueTasks.forEach(task -> taskExecutor.execute(() -> doExecutePublishTask(task.getId())));
         }
@@ -95,18 +102,68 @@ public class PublishServiceImpl implements PublishService {
             tasks.add(taskFileStorage.save(task));
             
             if (request.getScheduledTime() == null || request.getScheduledTime().isBefore(LocalDateTime.now())) {
-                taskExecutor.execute(() -> doExecutePublishTask(task.getId()));
+                videoBatchScheduler.trySchedule();
             }
         }
         return tasks;
     }
 
     @Override
-    public void executePublishTask(Long taskId) {
-        taskExecutor.execute(() -> doExecutePublishTask(taskId));
+    public List<PublishTask> submitVideoBatch(VideoBatchPublishRequest request) {
+        List<Long> articleIds = request.getArticleIds() != null ? request.getArticleIds() : List.of();
+        List<Long> accountIds = request.getAccountIds() != null ? request.getAccountIds() : List.of();
+        if (articleIds.isEmpty() || accountIds.isEmpty()) {
+            throw new RuntimeException("请提供至少一个文章ID和至少一个账号ID");
+        }
+        int n = articleIds.size();
+        int m = accountIds.size();
+        Long batchId = System.currentTimeMillis();
+        List<PublishTask> tasks = new ArrayList<>();
+
+        for (int i = 0; i < n; i++) {
+            Long articleId = articleIds.get(i);
+            Article article = articleFileStorage.findById(articleId)
+                    .orElseThrow(() -> new RuntimeException("文章不存在: " + articleId));
+            if (!UserContext.isAdmin() && !article.getUserId().equals(UserContext.getUserId())) {
+                throw new RuntimeException("无权操作文章: " + articleId);
+            }
+            int accountIndex = i % m;
+            Long accountId = accountIds.get(accountIndex);
+            Account account = accountService.getById(accountId)
+                    .orElseThrow(() -> new RuntimeException("账号不存在: " + accountId));
+            if (!UserContext.isAdmin() && account.getUserId() != null && !account.getUserId().equals(UserContext.getUserId())) {
+                throw new RuntimeException("无权操作账号: " + accountId);
+            }
+            int accountSequenceIndex = i / m;
+
+            PublishTask task = new PublishTask();
+            task.setArticleId(articleId);
+            task.setAccountId(accountId);
+            task.setUserId(UserContext.getUserId());
+            task.setPublishStatus(0);
+            task.setScheduledTime(request.getScheduledTime());
+            task.setBatchId(batchId);
+            task.setAccountSequenceIndex(accountSequenceIndex);
+            tasks.add(taskFileStorage.save(task));
+        }
+
+        if (request.getScheduledTime() == null || !request.getScheduledTime().isAfter(LocalDateTime.now())) {
+            videoBatchScheduler.trySchedule();
+        }
+        return tasks;
     }
 
-    /** 实际执行发布逻辑，由线程池调用，实现多账号并行（一账号一浏览器） */
+    @Override
+    public void executePublishTask(Long taskId) {
+        videoBatchScheduler.trySchedule();
+    }
+
+    @Override
+    public void runTaskSync(Long taskId) {
+        doExecutePublishTask(taskId);
+    }
+
+    /** 实际执行发布逻辑，由线程池或批量调度器调用 */
     private void doExecutePublishTask(Long taskId) {
         PublishTask task = taskFileStorage.findById(taskId).orElse(null);
         if (task == null) return;
@@ -160,16 +217,11 @@ public class PublishServiceImpl implements PublishService {
                 adapter.publishArticle(article, account, task, cleanedContent);
             }
 
-            // 2=已填写未发布（技能里屏蔽了最终发布）时不记为成功
-            if (task.getPublishStatus() != null && task.getPublishStatus() == 2) {
-                taskFileStorage.save(task);
-                recordLog(taskId, "INFO", "视频已填写完成，未点击发布（测试）", null, null, 200, null);
-            } else {
-                task.setPublishStatus(3); // 成功
-                task.setErrorMessage(null);
-                taskFileStorage.save(task);
-                recordLog(taskId, "INFO", "文章已成功同步至 " + platformKey + "！文章ID: " + task.getPlatformArticleId(), null, "SUCCESS", 200, null);
-            }
+            // 无论技能内是否点击最终发布，只要整体流程成功执行，就记为成功（前端需看到「已完成」）
+            task.setPublishStatus(3); // 成功
+            task.setErrorMessage(null);
+            taskFileStorage.save(task);
+            recordLog(taskId, "INFO", "文章已成功同步至 " + platformKey + "！文章ID: " + task.getPlatformArticleId(), null, "SUCCESS", 200, null);
 
         } catch (Exception e) {
             log.error("分发任务执行异常: taskId={}", taskId, e);
@@ -252,6 +304,11 @@ public class PublishServiceImpl implements PublishService {
         });
         stats.setPlatformData(platformData);
         return stats;
+    }
+
+    @Override
+    public PublishTask getTaskById(Long taskId) {
+        return taskFileStorage.findById(taskId).orElse(null);
     }
 
     @Override

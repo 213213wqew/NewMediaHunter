@@ -26,14 +26,26 @@
         </div>
 
         <div class="video-list">
-          <div v-for="(item, index) in videos" :key="item.id" class="video-item">
-            <span class="item-index">{{ index + 1 }}</span>
+          <div v-for="(item, index) in videos" :key="item.id" class="video-item" :class="item.status">
+            <span class="item-index" v-if="item.status === 'idle'">{{ index + 1 }}</span>
+            <span class="item-status-icon" v-else>
+              <span v-if="item.status === 'queued'">⏳</span>
+              <i v-else-if="item.status === 'publishing'" class="el-icon-loading"></i>
+              <span v-else-if="item.status === 'error'">⚠️</span>
+              <span v-else-if="item.status === 'success'">✓</span>
+            </span>
             <input
               v-model="item.videoUrl"
               class="input input-addr input-full"
+              :class="{ 'input-disabled': publishing }"
+              :disabled="publishing"
               placeholder="地址+文件名"
             />
-            <button type="button" class="btn-remove" title="删除" @click="removeVideo(index)">
+            <div class="item-status-info" v-if="item.status !== 'idle'">
+              <span class="status-label">{{ getStatusLabel(item.status) }}</span>
+              <span class="status-detail" v-if="item.statusText">{{ item.statusText }}</span>
+            </div>
+            <button v-if="item.status !== 'publishing' && item.status !== 'queued'" type="button" class="btn-remove" title="删除" @click="removeVideo(index)">
               ✕
             </button>
           </div>
@@ -48,7 +60,7 @@
       <aside class="video-sidebar card">
         <div class="sidebar-scroll-wrap">
           <div class="section-title">📡 分发渠道</div>
-          <p class="sidebar-hint">默认只选中当前已配置平台下的账号；多视频时按「同平台内平分」轮询（每个平台内第 1 个视频→第 1 个账号，第 2 个→第 2 个，依此类推）。点击卡片可展开/折叠详细设置。</p>
+          <p class="sidebar-hint">多视频按选中账号轮询分配（第 1 个视频→第 1 个账号，第 2 个→第 2 个…），每个账号依次上传、最多 9 个账号同时进行。点击卡片可展开/折叠详细设置。</p>
           <div v-if="platformList.length === 0" class="loading-hint">正在加载平台列表...</div>
           <div v-else class="account-grid">
           <div v-for="plat in platformList" :key="plat.id" class="platform-config-card">
@@ -88,6 +100,36 @@
                   </label>
                 </div>
               </div>
+              <!-- 今日头条专属：生成图文（默认选中，发布时若选中则技能内勾选） -->
+              <div v-if="isToutiao(plat)" class="mini-form-group toutiao-generate-article">
+                <label class="generate-article-label">
+                  <input
+                    type="checkbox"
+                    v-model="(form.platformSettings as any)[plat.platformKey].generateArticle"
+                  />
+                  <span>生成图文</span>
+                </label>
+                <div class="generate-article-hint">生成的内容将与视频同时发布</div>
+              </div>
+              <!-- 今日头条专属：选择作品声明（单选） -->
+              <div v-if="isToutiao(plat)" class="mini-form-group work-statement-block">
+                <label>📋 选择作品声明</label>
+                <div class="work-statement-list">
+                  <label
+                    v-for="opt in WORK_STATEMENT_OPTIONS"
+                    :key="opt.value"
+                    class="work-statement-item"
+                  >
+                    <input
+                      type="radio"
+                      :name="'workStatement-' + plat.platformKey"
+                      :value="opt.value"
+                      v-model="(form.platformSettings as any)[plat.platformKey].workStatement"
+                    />
+                    <span>{{ opt.label }}</span>
+                  </label>
+                </div>
+              </div>
               <!-- 百家号专属：分类 + 活动投稿（与百家号后台一致） -->
               <template v-if="isBaijiahao(plat)">
                 <div class="mini-form-group bajiahao-category-row">
@@ -110,19 +152,13 @@
                 </div>
                 <div class="mini-form-group bajiahao-activity-block">
                   <label class="bajiahao-label">活动投稿</label>
-                  <div class="bajiahao-activity-grid">
-                    <button
-                      v-for="act in BAJIAHAO_ACTIVITIES"
-                      :key="act"
-                      type="button"
-                      class="bajiahao-activity-chip"
-                      :class="{ active: (form.platformSettings as any)[plat.platformKey]?.selectedActivity === act }"
-                      @click="(form.platformSettings as any)[plat.platformKey].selectedActivity = (form.platformSettings as any)[plat.platformKey]?.selectedActivity === act ? '' : act"
-                    >
-                      {{ act }}
-                    </button>
-                  </div>
-                  <a href="javascript:void(0)" class="bajiahao-more-activities">更多活动 &gt;</a>
+                  <input
+                    v-model="(form.platformSettings as any)[plat.platformKey].selectedActivity"
+                    type="text"
+                    class="mini-input bajiahao-activity-input"
+                    placeholder="输入活动名称匹配，留空则选第一个"
+                  />
+                  <div class="bajiahao-activity-hint">发布时在页面中按名称匹配；不填则默认选第一个活动</div>
                 </div>
               </template>
               <!-- 视频页隐藏：发布类型、内容分类、来源标签（仅隐藏 UI，数据仍提交给后端） -->
@@ -209,7 +245,7 @@
         </div>
 
           <div v-if="form.selectedAccountIds.length > 0" class="selected-summary selected-summary-visible">
-            已选 <strong>{{ form.selectedAccountIds.length }}</strong> 个账号（多视频将按同平台内轮询平分）
+            已选 <strong>{{ form.selectedAccountIds.length }}</strong> 个账号（多视频将轮询分配，每账号依次上传）
           </div>
 
           <div class="publish-actions">
@@ -236,7 +272,7 @@ import { ref, reactive, computed, onMounted } from 'vue';
 import { getPlatformList } from '../../api/platform';
 import { getAccountList } from '../../api/account';
 import { saveArticle } from '../../api/article';
-import { submitPublishTask } from '../../api/publish';
+import { submitVideoBatch, getTaskStatus } from '../../api/publish';
 import { getPlatformTasks } from '../../api/ai';
 import type { Platform, Account } from '../../types';
 import { ElMessage } from 'element-plus';
@@ -245,6 +281,9 @@ interface VideoItem {
   id: number;
   title: string;
   videoUrl: string;
+  status: 'idle' | 'queued' | 'publishing' | 'success' | 'error';
+  statusText?: string;
+  taskId?: number;
 }
 
 // 作品声明：value 与头条页「作品声明」选项文案一致（含标点），直接传给技能点击
@@ -279,23 +318,6 @@ const BAJIAHAO_CATEGORIES = [
   { value: '其他', label: '其他' },
 ];
 
-/** 百家号 - 活动投稿（与百家号后台活动一致，可后续接接口） */
-const BAJIAHAO_ACTIVITIES = [
-  '原来你是这样的惊蛰',
-  'AIGC武侠影像创作',
-  '春天的第一个AI转场',
-  'AIGC抽象搞笑剧场',
-  'AIGC看热点第二季',
-  '遇见初春好风景',
-  '我们的2030',
-  '来大同撞好运',
-  '来北京撞好运',
-  'AI动漫主题赛',
-  'AIGC未来创作联赛3期',
-  '「北京范儿」短视频大赛',
-  '热点早班车',
-];
-
 const VIDEO_EXTS = ['.mp4', '.mov', '.avi', '.wmv', '.webm', '.mkv', '.m4v'];
 function isVideoFile(file: File): boolean {
   const name = (file.name || '').toLowerCase();
@@ -327,6 +349,8 @@ const form = reactive({
     selectedSkillId?: string;
     /** 百家号专用：活动投稿选中的活动名称 */
     selectedActivity?: string;
+    /** 今日头条专用：是否勾选「生成图文」，默认 true */
+    generateArticle?: boolean;
   }>,
 });
 
@@ -392,7 +416,12 @@ async function openFilePicker() {
       }
       for (const file of videoFiles) {
         const name = file.name.replace(/\.[^.]+$/, '') || file.name;
-        videos.push({ id: nextId++, title: name, videoUrl: file.name });
+        videos.push({ 
+          id: nextId++, 
+          title: name, 
+          videoUrl: file.name,
+          status: 'idle'
+        });
       }
       ElMessage.success(`已添加 ${videoFiles.length} 个视频，下次将从此文件夹打开`);
       return;
@@ -423,6 +452,7 @@ function handleFilePick(e: Event) {
       id: nextId++,
       title: name,
       videoUrl: file.name,
+      status: 'idle'
     });
   }
   ElMessage.success(`已添加 ${videoFiles.length} 个视频，将把文件名与地址传给后端`);
@@ -442,8 +472,16 @@ function isBaijiahao(plat: Platform): boolean {
   return plat.platformKey === 'bjh' || plat.platformKey === 'baijiahao';
 }
 
+function isToutiao(plat: Platform): boolean {
+  return plat.platformKey === 'toutiao';
+}
+
 function initPlatformSettingsForPlatform(key: string) {
-  if ((form.platformSettings as any)[key]) return;
+  const cur = (form.platformSettings as any)[key];
+  if (cur) {
+    if (key === 'toutiao' && cur.generateArticle === undefined) cur.generateArticle = true;
+    return;
+  }
   (form.platformSettings as any)[key] = {
     category: '',
     tags: '',
@@ -451,8 +489,9 @@ function initPlatformSettingsForPlatform(key: string) {
     publishType: 'video',
     isScheduled: false,
     scheduledTime: '',
-    workStatement: '自行拍摄',
+    workStatement: '虚构演绎，故事经历',
     ...(['bjh', 'baijiahao'].includes(key) ? { selectedActivity: '' as string } : {}),
+    ...(key === 'toutiao' ? { generateArticle: true } : {}),
   };
 }
 
@@ -488,50 +527,122 @@ function getSelectedAccountsByPlatform(): Map<number, number[]> {
   return byPlatform;
 }
 
+function getStatusLabel(status: string) {
+  const map: Record<string, string> = {
+    'queued': '等待发布',
+    'publishing': '正在发布',
+    'success': '发布成功',
+    'error': '发布失败'
+  };
+  return map[status] || '';
+}
+
+/** 轮询任务状态直到结束 */
+async function pollTaskStatus(videoItem: VideoItem, taskId: number) {
+  const maxRetries = 200; // 约 10 分钟（3s 一次）
+  let retries = 0;
+  
+  const timer = setInterval(async () => {
+    retries++;
+    if (retries > maxRetries) {
+      clearInterval(timer);
+      videoItem.status = 'error';
+      videoItem.statusText = '发布超时';
+      return;
+    }
+    
+    try {
+      const task = await getTaskStatus(taskId);
+      if (!task) return;
+      
+      // 0:待处理, 1:待发布(已填写), 2:发布中, 3:成功, 4:失败
+      if (task.publishStatus === 3) {
+        clearInterval(timer);
+        videoItem.status = 'success';
+        videoItem.statusText = '发布成功';
+      } else if (task.publishStatus === 4) {
+        clearInterval(timer);
+        videoItem.status = 'error';
+        videoItem.statusText = task.errorMessage || '发布失败';
+      } else if (task.publishStatus === 2) {
+        videoItem.status = 'publishing';
+        videoItem.statusText = '正在发布（上传/操作浏览器）...';
+      } else {
+        // 0/1 统一视为等待发布
+        videoItem.status = 'queued';
+        videoItem.statusText = '等待发布...';
+      }
+    } catch (err) {
+      console.warn('轮询任务失败:', err);
+    }
+  }, 3000);
+}
+
 async function handlePublish() {
-  const list = validVideos.value;
   const accountIds = form.selectedAccountIds.slice();
-  if (!list.length || !accountIds.length) return;
+  const toPublish = videos.filter(v => v.status !== 'success' && v.status !== 'publishing' && v.status !== 'queued');
+  if (!toPublish.length || !accountIds.length) return;
+
   publishing.value = true;
   publishStatus.value = '';
   publishStatusText.value = '';
+
   try {
-    const byPlatform = getSelectedAccountsByPlatform();
-    let successCount = 0;
-    // 按「同平台内平分」：每个视频在每个平台内轮询一个账号，不跨平台混排
-    for (let i = 0; i < list.length; i++) {
-      const v = list[i];
-      if (!v) continue;
-      const assignedAccountIds: number[] = [];
-      for (const [, platformAccountIds] of byPlatform) {
-        const id = platformAccountIds[i % platformAccountIds.length];
-        if (id !== undefined) assignedAccountIds.push(id);
-      }
-      const article = await saveArticle({
-        title: v.title.trim(),
-        content: '',
-        contentType: 'video',
-        videoUrl: v.videoUrl.trim(),
-        status: 1,
-        platformSettings: Object.keys(form.platformSettings).length ? JSON.stringify(form.platformSettings) : undefined,
-      });
-      if (article?.id) {
-        await submitPublishTask({ articleId: article.id, accountIds: assignedAccountIds });
-        successCount++;
+    // 先全部标为“等待发布”，再依次保存为文章，并记录「视频项 -> 文章ID」对应关系
+    const articleIds: number[] = [];
+    const videoByIndex: VideoItem[] = [];
+    for (const v of toPublish) {
+      v.status = 'queued';
+      v.statusText = '准备提交...';
+    }
+    for (const v of toPublish) {
+      const title = (v.title?.trim() || v.videoUrl.replace(/\.[^.]+$/, '')).trim();
+      if (!title) continue;
+      try {
+        const article = await saveArticle({
+          title,
+          content: '',
+          contentType: 'video',
+          videoUrl: v.videoUrl.trim(),
+          status: 1,
+          platformSettings: Object.keys(form.platformSettings).length ? JSON.stringify(form.platformSettings) : undefined,
+        });
+        if (article?.id) {
+          articleIds.push(article.id);
+          videoByIndex.push(v);
+        }
+      } catch (e) {
+        v.status = 'error';
+        v.statusText = (e as Error)?.message || '保存失败';
       }
     }
-
+    if (articleIds.length === 0) {
+      publishStatus.value = 'error';
+      publishStatusText.value = '没有成功保存的视频';
+      return;
+    }
+    // 一次性批量提交：后端按账号轮询分配，同一账号串行、最多 9 账号并发，避免一账号多浏览器
+    const tasks = await submitVideoBatch({ articleIds, accountIds });
+    if (!tasks || tasks.length === 0) {
+      publishStatus.value = 'error';
+      publishStatusText.value = '提交任务失败';
+      return;
+    }
+    // 任务顺序与 articleIds 一致，按索引绑定到对应视频并轮询
+    for (let i = 0; i < videoByIndex.length && i < tasks.length; i++) {
+      const t = tasks[i];
+      const v = videoByIndex[i];
+      if (!t?.id || !v) continue;
+      v.taskId = t.id;
+      v.status = 'queued';
+      v.statusText = '等待发布...';
+      pollTaskStatus(v, t.id);
+    }
     publishStatus.value = 'success';
-    const platformCount = byPlatform.size;
-    publishStatusText.value = platformCount === 1 && accountIds.length === 1
-      ? `分发完成：${list.length} 个视频已提交至 1 个账号，请到「我的发文」查看`
-      : `分发完成：${list.length} 个视频已按平台平分至 ${accountIds.length} 个账号，请到「我的发文」查看`;
-    ElMessage.success(publishStatusText.value);
-    videos.splice(0, videos.length);
+    publishStatusText.value = `已提交 ${tasks.length} 个任务，按账号依次执行（每账号一个浏览器）`;
   } catch (err: any) {
     publishStatus.value = 'error';
-    publishStatusText.value = '分发失败：' + (err?.message || err?.response?.data?.message || '请稍后重试');
-    ElMessage.error(publishStatusText.value);
+    publishStatusText.value = '批量提交出错：' + (err?.message || '请检查网络');
   } finally {
     publishing.value = false;
   }
@@ -665,6 +776,54 @@ onMounted(async () => {
   background: var(--bg-secondary, #f8f9fa);
   border-radius: 8px;
   border: 1px solid var(--border-color, #eee);
+  transition: all 0.3s ease;
+}
+.video-item.publishing {
+  border-left: 4px solid var(--accent-blue, #1890ff);
+  background: rgba(24, 144, 255, 0.02);
+}
+.video-item.success {
+  border-left: 4px solid #52c41a;
+  background: rgba(82, 196, 26, 0.02);
+}
+.video-item.error {
+  border-left: 4px solid #ff4d4f;
+  background: rgba(255, 77, 79, 0.02);
+}
+
+.item-status-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+.item-status-icon .el-icon-loading {
+  color: var(--accent-blue);
+  font-size: 16px;
+}
+
+.item-status-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: 8px;
+  min-width: 120px;
+}
+.status-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.status-detail {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
 }
 .item-index {
   flex-shrink: 0;
@@ -697,6 +856,13 @@ onMounted(async () => {
   border-radius: 6px;
   font-size: 14px;
   box-sizing: border-box;
+  transition: all 0.3s ease;
+}
+.input-disabled {
+  background: var(--bg-tertiary, #f0f1f2);
+  color: var(--text-muted, #999);
+  cursor: not-allowed;
+  border-color: transparent;
 }
 .btn-remove {
   flex-shrink: 0;
@@ -877,6 +1043,35 @@ onMounted(async () => {
 }
 .bajiahao-activity-block > .bajiahao-label {
   margin-bottom: 10px;
+}
+.bajiahao-activity-input {
+  width: 100%;
+  max-width: 320px;
+}
+.bajiahao-activity-hint {
+  font-size: 11px;
+  color: var(--text-muted, #94a3b8);
+  margin-top: 6px;
+}
+.toutiao-generate-article {
+  margin-top: 14px;
+}
+.toutiao-generate-article .generate-article-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-primary, #e2e8f0);
+  cursor: pointer;
+}
+.toutiao-generate-article .generate-article-label input[type="checkbox"] {
+  flex-shrink: 0;
+}
+.toutiao-generate-article .generate-article-hint {
+  font-size: 11px;
+  color: var(--text-muted, #94a3b8);
+  margin-top: 6px;
+  margin-left: 24px;
 }
 .bajiahao-activity-grid {
   display: flex;

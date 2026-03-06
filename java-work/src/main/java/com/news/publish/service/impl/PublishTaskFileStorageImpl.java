@@ -99,6 +99,8 @@ public class PublishTaskFileStorageImpl implements PublishTaskFileStorage {
         t.setCreateTime(r.getCreateTime());
         t.setUpdateTime(r.getUpdateTime());
         t.setScheduledTime(r.getScheduledTime());
+        t.setBatchId(r.getBatchId());
+        t.setAccountSequenceIndex(r.getAccountSequenceIndex());
         return t;
     }
 
@@ -116,6 +118,8 @@ public class PublishTaskFileStorageImpl implements PublishTaskFileStorage {
         r.setCreateTime(t.getCreateTime());
         r.setUpdateTime(t.getUpdateTime());
         r.setScheduledTime(t.getScheduledTime());
+        r.setBatchId(t.getBatchId());
+        r.setAccountSequenceIndex(t.getAccountSequenceIndex());
         return r;
     }
 
@@ -139,6 +143,30 @@ public class PublishTaskFileStorageImpl implements PublishTaskFileStorage {
         return load().list.stream()
                 .filter(r -> status.equals(r.getPublishStatus()))
                 .filter(r -> r.getScheduledTime() != null && !r.getScheduledTime().isAfter(time))
+                .map(PublishTaskFileStorageImpl::toEntity)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<PublishTask> findPendingByBatchId(Long batchId) {
+        if (batchId == null) return List.of();
+        return load().list.stream()
+                .filter(r -> batchId.equals(r.getBatchId()) && Integer.valueOf(0).equals(r.getPublishStatus()))
+                .map(PublishTaskFileStorageImpl::toEntity)
+                .sorted((a, b) -> {
+                    int ac = Long.compare(a.getAccountId(), b.getAccountId());
+                    if (ac != 0) return ac;
+                    int ai = (a.getAccountSequenceIndex() != null) ? a.getAccountSequenceIndex() : 0;
+                    int bi = (b.getAccountSequenceIndex() != null) ? b.getAccountSequenceIndex() : 0;
+                    return Integer.compare(ai, bi);
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<PublishTask> findPendingBatchTasks() {
+        return load().list.stream()
+                .filter(r -> Integer.valueOf(0).equals(r.getPublishStatus()))
                 .map(PublishTaskFileStorageImpl::toEntity)
                 .collect(Collectors.toList());
     }

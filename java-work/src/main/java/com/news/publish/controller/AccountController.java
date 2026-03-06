@@ -11,13 +11,16 @@ import com.news.publish.service.automation.PythonSkillRunner;
 import com.news.publish.service.automation.SkillDiscoveryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -26,6 +29,8 @@ import java.util.Map;
 public class AccountController {
 
     private final AccountService accountService;
+    @Qualifier("taskExecutor")
+    private final Executor taskExecutor;
     private final AccountStatsStorage accountStatsStorage;
     private final SkillDiscoveryService skillDiscoveryService;
     private final PythonSkillRunner pythonSkillRunner;
@@ -43,44 +48,74 @@ public class AccountController {
     }
 
     /**
-     * 更新数据：对每个已绑定账号调用平台技能拉取昨日数据并写入本地文件。
-     * 会依次打开各平台创作者页，解析昨日粉丝/阅读/收益后保存。
+     * 更新数据：对选中的已绑定账号调用平台技能拉取昨日数据并写入本地文件。
+     * 若请求体带 accountIds 则只更新这些账号；否则更新全部。
      */
     @PostMapping("/refresh-stats")
-    public Map<Long, AccountStatsDto> refreshStats() {
-        List<Account> accounts = accountService.getAllAccounts();
-        for (Account acc : accounts) {
-            if (acc.getCookieData() == null || acc.getCookieData().isBlank()) continue;
-            Platform platform = platformRepository.findById(acc.getPlatformId()).orElse(null);
-            if (platform == null) continue;
-            String platformKey = platform.getPlatformKey();
-            String skillId = platformKey + "_agent";
-            SkillDiscoveryService.SkillMetadata meta = skillDiscoveryService.getSkill(skillId);
-            if (meta == null) continue;
-            Map<String, Object> params = new HashMap<>();
-            params.put("command", "FETCH_STATS");
-            params.put("accountId", String.valueOf(acc.getId()));
-            params.put("platform", platformKey);
-            params.put("cookieJson", acc.getCookieData());
-            params.put("headless", true); // 后台更新，不弹出浏览器窗口
-            try {
-                PythonSkillRunner.SkillExecutionResult result = pythonSkillRunner.execute(meta, params);
-                if (!result.isSuccess() || result.getData() == null) continue;
-                Map<String, Object> data = result.getData();
-                AccountStatsDto dto = new AccountStatsDto();
-                dto.setAccountId(acc.getId());
-                dto.setTotalFans(_int(data.get("totalFans")));
-                dto.setTotalReads(_long(data.get("totalReads")));
-                dto.setTotalRevenue(data.get("totalRevenue") != null ? data.get("totalRevenue").toString() : "");
-                dto.setYesterdayFans(_int(data.get("yesterdayFans")));
-                dto.setYesterdayReads(_long(data.get("yesterdayReads")));
-                dto.setYesterdayRevenue(data.get("yesterdayRevenue") != null ? data.get("yesterdayRevenue").toString() : "");
-                dto.setUpdatedAt(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-                accountStatsStorage.save(dto);
-            } catch (Exception e) {
-                log.warn("拉取账号 {} 昨日数据失败: {}", acc.getId(), e.getMessage());
+    public Map<Long, AccountStatsDto> refreshStats(@RequestBody(required = false) Map<String, Object> body) {
+        List<Account> all = accountService.getAllAccounts();
+        Set<Long> filterIds = null;
+        if (body != null && body.get("accountIds") instanceof List) {
+            @SuppressWarnings("unchecked")
+            List<Number> ids = (List<Number>) body.get("accountIds");
+            if (ids != null && !ids.isEmpty()) {
+                filterIds = ids.stream().map(Number::longValue).collect(Collectors.toSet());
             }
         }
+        final Set<Long> idsToRefresh = filterIds;
+        List<Account> accounts = idsToRefresh == null ? all : all.stream().filter(a -> idsToRefresh.contains(a.getId())).collect(Collectors.toList());
+        Map<Long, Account> accountMap = new HashMap<>();
+        for (Account a : accounts) {
+            if (a.getCookieData() == null || a.getCookieData().isBlank()) continue;
+            Platform platform = platformRepository.findById(a.getPlatformId()).orElse(null);
+            if (platform == null) continue;
+            String skillId = platform.getPlatformKey() + "_agent";
+            if (skillDiscoveryService.getSkill(skillId) == null) continue;
+            accountMap.put(a.getId(), a);
+        }
+        List<Account> toRefresh = new ArrayList<>(accountMap.values());
+        if (toRefresh.isEmpty()) {
+            return accountStatsStorage.findAll();
+        }
+        // 多线程并发拉取各账号昨日数据，结果放入 map，最后合并写入一次
+        Map<Long, AccountStatsDto> results = new ConcurrentHashMap<>();
+        List<CompletableFuture<Void>> futures = toRefresh.stream()
+            .map(acc -> CompletableFuture.runAsync(() -> {
+                Platform platform = platformRepository.findById(acc.getPlatformId()).orElse(null);
+                if (platform == null) return;
+                String platformKey = platform.getPlatformKey();
+                SkillDiscoveryService.SkillMetadata meta = skillDiscoveryService.getSkill(platformKey + "_agent");
+                if (meta == null) return;
+                Map<String, Object> params = new HashMap<>();
+                params.put("command", "FETCH_STATS");
+                params.put("accountId", String.valueOf(acc.getId()));
+                params.put("platform", platformKey);
+                params.put("cookieJson", acc.getCookieData());
+                params.put("headless", true);
+                try {
+                    PythonSkillRunner.SkillExecutionResult result = pythonSkillRunner.execute(meta, params);
+                    if (!result.isSuccess() || result.getData() == null) return;
+                    Map<String, Object> data = result.getData();
+                    AccountStatsDto dto = new AccountStatsDto();
+                    dto.setAccountId(acc.getId());
+                    dto.setTotalFans(_int(data.get("totalFans")));
+                    dto.setTotalReads(_long(data.get("totalReads")));
+                    dto.setTotalRevenue(data.get("totalRevenue") != null ? data.get("totalRevenue").toString() : "");
+                    dto.setYesterdayFans(_int(data.get("yesterdayFans")));
+                    dto.setYesterdayReads(_long(data.get("yesterdayReads")));
+                    dto.setYesterdayRevenue(data.get("yesterdayRevenue") != null ? data.get("yesterdayRevenue").toString() : "");
+                    dto.setUpdatedAt(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                    results.put(acc.getId(), dto);
+                } catch (Exception e) {
+                    log.warn("拉取账号 {} 昨日数据失败: {}", acc.getId(), e.getMessage());
+                }
+            }, taskExecutor))
+            .collect(Collectors.toList());
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        // 合并当前已有数据，用本次拉取结果覆盖对应账号，一次性写入
+        Map<Long, AccountStatsDto> current = accountStatsStorage.findAll();
+        current.putAll(results);
+        accountStatsStorage.saveAll(new ArrayList<>(current.values()));
         return accountStatsStorage.findAll();
     }
 

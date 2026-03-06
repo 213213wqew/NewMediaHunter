@@ -27,10 +27,11 @@ export function getAccountStats() {
 }
 
 /**
- * 更新数据：拉取各账号昨日数据并保存到本地
+ * 更新数据：拉取选中账号昨日数据并保存到本地。不传 accountIds 则更新全部。
  */
-export function refreshAccountStats() {
-    return request.post<Record<string, AccountStats>>('/account/refresh-stats', {}, { timeout: 300000 });
+export function refreshAccountStats(accountIds?: number[]) {
+    const body = accountIds != null && accountIds.length > 0 ? { accountIds } : {};
+    return request.post<Record<string, AccountStats>>('/account/refresh-stats', body, { timeout: 300000 });
 }
 
 /**

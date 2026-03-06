@@ -19,4 +19,6 @@ public class PublishTaskRecord {
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
     private LocalDateTime scheduledTime;
+    private Long batchId;
+    private Integer accountSequenceIndex;
 }

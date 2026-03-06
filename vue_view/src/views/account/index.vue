@@ -17,6 +17,11 @@
       <table>
         <thead>
           <tr>
+            <th style="width: 44px;">
+              <label class="th-checkbox">
+                <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
+              </label>
+            </th>
             <th>ID</th>
             <th>账号昵称</th>
             <th>平台</th>
@@ -32,6 +37,11 @@
         </thead>
         <tbody>
           <tr v-for="acc in accounts" :key="acc.id">
+            <td>
+              <label class="row-checkbox">
+                <input type="checkbox" :checked="selectedAccountIds.includes(acc.id!)" @change="toggleSelect(acc.id!)" />
+              </label>
+            </td>
             <td style="color: var(--text-muted); font-family: monospace;">#{{ acc.id }}</td>
             <td>
               <div style="display: flex; align-items: center; gap: 10px;">
@@ -61,7 +71,7 @@
             </td>
           </tr>
           <tr v-if="accounts.length === 0">
-            <td colspan="11" style="text-align: center; padding: 40px; color: var(--text-muted);">暂无已绑定的账号</td>
+            <td colspan="12" style="text-align: center; padding: 40px; color: var(--text-muted);">暂无已绑定的账号</td>
           </tr>
         </tbody>
       </table>
@@ -108,10 +118,31 @@ const statsMap = ref<Record<string, AccountStats>>({});
 const showBindDialog = ref(false);
 const binding = ref(false);
 const refreshing = ref(false);
+/** 勾选的账号 ID，仅选中的才参与「更新数据」；默认全选 */
+const selectedAccountIds = ref<number[]>([]);
 const bindForm = ref({
   platformKey: '',
   accountName: ''
 });
+
+const isAllSelected = computed(() => accounts.value.length > 0 && selectedAccountIds.value.length === accounts.value.length);
+
+function toggleSelectAll() {
+  if (isAllSelected.value) {
+    selectedAccountIds.value = [];
+  } else {
+    selectedAccountIds.value = accounts.value.map((a) => a.id!).filter((id) => id != null);
+  }
+}
+
+function toggleSelect(id: number) {
+  const i = selectedAccountIds.value.indexOf(id);
+  if (i >= 0) {
+    selectedAccountIds.value = selectedAccountIds.value.filter((x) => x !== id);
+  } else {
+    selectedAccountIds.value = [...selectedAccountIds.value, id];
+  }
+}
 
 function getStat(accountId: number, key: keyof AccountStats): string | number {
   const s = statsMap.value[String(accountId)];
@@ -129,8 +160,10 @@ function formatReads(v: string | number): string {
 }
 
 /** 绑定时可选平台：目前仅保留百家号、今日头条 */
+// 与分发渠道一致：只保留百家号和今日头条
+const ALLOWED_PLATFORM_KEYS = ['bjh', 'baijiahao', 'toutiao', 'tt'];
 const bindPlatforms = computed(() =>
-  platforms.value.filter((p) => p.platformKey === 'baijiahao' || p.platformKey === 'toutiao')
+  platforms.value.filter((p) => ALLOWED_PLATFORM_KEYS.includes((p.platformKey || '').toLowerCase()))
 );
 
 function getPlatformName(platformId: number) {
@@ -142,6 +175,8 @@ const loadData = async () => {
   try {
     accounts.value = await getAccountList();
     platforms.value = await getPlatformList();
+    // 默认全选，仅选中的才更新数据
+    selectedAccountIds.value = (accounts.value || []).map((a) => a.id!).filter((id) => id != null);
     const first = bindPlatforms.value[0];
     if (first && !bindForm.value.platformKey) {
       bindForm.value.platformKey = first.platformKey;
@@ -170,11 +205,16 @@ const handleRefreshStats = async () => {
     ElMessage.info('暂无账号，请先绑定');
     return;
   }
+  const ids = selectedAccountIds.value.slice();
+  if (ids.length === 0) {
+    ElMessage.warning('请至少勾选一个账号');
+    return;
+  }
   refreshing.value = true;
   try {
-    const map = await refreshAccountStats();
+    const map = await refreshAccountStats(ids);
     statsMap.value = map || {};
-    ElMessage.success('昨日数据已更新');
+    ElMessage.success(`已更新 ${ids.length} 个账号的昨日数据`);
   } catch (err: any) {
     const msg = err?.response?.data?.message ?? err?.message ?? '更新失败';
     ElMessage.error(msg);
@@ -230,6 +270,20 @@ const handleDelete = async (id: number) => {
 </script>
 
 <style scoped>
+.th-checkbox,
+.row-checkbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.th-checkbox input,
+.row-checkbox input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
 .bind-dialog-card {
   position: fixed;
   top: 50%;
