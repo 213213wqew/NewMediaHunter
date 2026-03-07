@@ -158,6 +158,22 @@ def run(params: dict, session_dir: str, cookie_json_str: str) -> dict:
                         time.sleep(2)  # 等弹窗动画/渲染
                         page.get_by_text("封面编辑", exact=False).first.wait_for(state="visible", timeout=20000)
                         time.sleep(1)
+                        # 刚进封面编辑时可能出现裁剪步骤，需先点「完成裁剪」才能到确认（F12: div.clip-btn 内 clip-btn-content 为「完成裁剪」）
+                        clip_btn = page.locator("div.clip-btn").filter(has_text="完成裁剪").first
+                        if clip_btn.count() > 0:
+                            try:
+                                clip_btn.scroll_into_view_if_needed()
+                                time.sleep(0.5)
+                                clip_btn.click(timeout=10000)
+                                print("DEBUG: 已点击「完成裁剪」，等待裁剪界面关闭...")
+                                time.sleep(2)
+                            except Exception:
+                                try:
+                                    time.sleep(1)
+                                    clip_btn.click(timeout=5000, force=True)
+                                    time.sleep(2)
+                                except Exception as e:
+                                    print(f"DEBUG: 点击完成裁剪失败（可能未出现裁剪）: {e}")
                         # 页面为人机检测：需先点击「文字」后确认按钮才会释放（F12: 左侧 tool-menu 下 icon-name 文字）
                         try:
                             cover_dialog = page.locator("div.xigua-dialog-container, div.dialog-container").first

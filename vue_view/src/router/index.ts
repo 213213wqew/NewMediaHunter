@@ -53,6 +53,10 @@ const routes: RouteRecordRaw[] = [
     {
         path: '/ai-settings',
         component: () => import('../views/ai-settings/index.vue'),
+    },
+    {
+        path: '/ai-writing-specs',
+        component: () => import('../views/ai-settings/WritingSpecIndex.vue'),
     }
 ];
 
@@ -73,7 +77,7 @@ router.beforeEach(async (to, from, next) => {
                 next(to.path === '/login' ? '/' : to);
                 return;
             }
-        } catch (_) {}
+        } catch (_) { }
         next('/login');
         return;
     }

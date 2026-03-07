@@ -30,7 +30,7 @@ public interface AIService {
     /**
      * 全自动撰写文章
      */
-    String generateFullArticle(String topic, String outline);
+    String generateFullArticle(String topic, String outline, Long specId);
 
     /**
      * 自动匹配随机首图 (如通过 Unsplash)
@@ -40,7 +40,7 @@ public interface AIService {
     /**
      * AI 内容润色
      */
-    String polishContent(String content);
+    String polishContent(String content, Long specId);
 
     /**
      * 根据内容深度语义匹配多张配图
@@ -66,5 +66,5 @@ public interface AIService {
     /**
      * 新闻深度分析 (针对 News Aggregator Skill)
      */
-    String analyzeNews(String title, String content);
+    String analyzeNews(String title, String content, Long specId);
 }

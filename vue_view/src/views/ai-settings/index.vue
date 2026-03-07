@@ -132,6 +132,15 @@
         {{ testResult.success ? '✅' : '❌' }} {{ testResult.message }}
       </div>
     </div>
+
+    <!-- 写作规范入口指引 -->
+    <div class="card" style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <div class="section-title" style="margin-bottom: 4px;">📜 AI 写作规范</div>
+        <div class="form-hint">通过设置不同的写作风格提示词（如：爆款风格、新闻风格），让 AI 生成的内容更符合您的品味。</div>
+      </div>
+      <router-link to="/ai-writing-specs" class="btn btn-primary btn-sm">去管理规范</router-link>
+    </div>
   </div>
 </template>
 

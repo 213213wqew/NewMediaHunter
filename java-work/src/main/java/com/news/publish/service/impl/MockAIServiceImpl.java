@@ -38,7 +38,7 @@ public class MockAIServiceImpl implements AIService {
     }
 
     @Override
-    public String generateFullArticle(String topic, String outline) {
+    public String generateFullArticle(String topic, String outline, Long specId) {
         // 模拟生成完整文章的 HTML 内容
         return "<h2>摘要导读</h2>" +
                "<p>针对【<strong>" + topic + "</strong>】这一话题，近期的动向引发了广泛关注。本文将带您深入探讨背后的核心逻辑与行业趋势。</p>" +
@@ -68,7 +68,7 @@ public class MockAIServiceImpl implements AIService {
     }
 
     @Override
-    public String polishContent(String content) {
+    public String polishContent(String content, Long specId) {
         if (content == null || content.length() < 10) return content;
         // 模拟 AI 润色逻辑：清洗冗余，增强修辞
         return "【AI 深度润色版】\n" + 
@@ -103,7 +103,7 @@ public class MockAIServiceImpl implements AIService {
     }
 
     @Override
-    public String analyzeNews(String title, String content) {
+    public String analyzeNews(String title, String content, Long specId) {
         if (title == null && content == null) return "{}";
         // Mock 新闻深度分析：返回简单结构化结果
         return "{\"title\":\"" + (title != null ? title : "") + "\",\"summary\":\"【Mock 分析】基于标题与正文的模拟深度解读。\",\"keywords\":[\"热点\",\"趋势\",\"解读\"]}";

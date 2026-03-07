@@ -3,6 +3,8 @@ package com.news.publish.service.impl;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.news.publish.model.entity.AiConfig;
+import com.news.publish.model.entity.AiWritingSpecification;
+
 import com.news.publish.service.AIService;
 import com.news.publish.service.AiConfigService;
 import com.news.publish.service.automation.ArticleExtractorService;
@@ -30,6 +32,7 @@ public class RealAIServiceImpl implements AIService {
     private final AiConfigService aiConfigService;
     private final InteractiveBrowserService interactiveBrowserService;
     private final ArticleExtractorService articleExtractorService;
+    private final com.news.publish.service.AiSpecJsonStorageService specificationService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     // ------ 用于测试连接时的临时实例（direct config，不依赖 Spring 上下文）------
@@ -39,10 +42,12 @@ public class RealAIServiceImpl implements AIService {
     @org.springframework.beans.factory.annotation.Autowired
     public RealAIServiceImpl(AiConfigService aiConfigService, 
                             @org.springframework.context.annotation.Lazy InteractiveBrowserService interactiveBrowserService,
-                            ArticleExtractorService articleExtractorService) {
+                            ArticleExtractorService articleExtractorService,
+                            com.news.publish.service.AiSpecJsonStorageService specificationService) {
         this.aiConfigService = aiConfigService;
         this.interactiveBrowserService = interactiveBrowserService;
         this.articleExtractorService = articleExtractorService;
+        this.specificationService = specificationService;
         this.directConfig = null;
     }
 
@@ -51,8 +56,10 @@ public class RealAIServiceImpl implements AIService {
         this.aiConfigService = null;
         this.interactiveBrowserService = null;
         this.articleExtractorService = null;
+        this.specificationService = null;
         this.directConfig = directConfig;
     }
+
 
     // -------- 获取当前有效配置 --------
     private AiConfig resolveConfig() {
@@ -211,6 +218,27 @@ public class RealAIServiceImpl implements AIService {
     /**
      * 统一调用分发
      */
+    // -------- 获取指定的写作规范提示词 --------
+    private String resolveSystemPrompt(String category, Long specId, String defaultPrompt) {
+        if (specificationService == null) return defaultPrompt;
+        
+        // 1. 如果传了 specId，优先查指定的
+        if (specId != null) {
+            return specificationService.getList().stream()
+                .filter(s -> s.getId().equals(specId))
+                .map(AiWritingSpecification::getPromptContent)
+                .findFirst()
+                .orElse(defaultPrompt);
+        }
+        
+        // 2. 如果没传，查当前用户的默认规范
+        return specificationService.getList(category).stream()
+            .filter(s -> Boolean.TRUE.equals(s.getIsDefault()))
+            .map(AiWritingSpecification::getPromptContent)
+            .findFirst()
+            .orElse(defaultPrompt);
+    }
+
     private String call(String systemPrompt, String userContent) {
         AiConfig cfg = resolveConfig();
         if (cfg == null || cfg.getBaseUrl() == null || cfg.getApiKey() == null) {
@@ -280,9 +308,8 @@ public class RealAIServiceImpl implements AIService {
     }
 
     @Override
-    public String generateFullArticle(String topic, String outline) {
-        String res = call(
-            "你是一个资深的新闻自媒体主编，擅长撰写吸引读者点击、具有爆款潜质、且排版极度精美的资讯文稿。\n" +
+    public String generateFullArticle(String topic, String outline, Long specId) {
+        String defaultSystem = "你是一个资深的新闻自媒体主编，擅长撰写吸引读者点击、具有爆款潜质、且排版极度精美的资讯文稿。\n" +
             "请根据提供的【参考素材/原文历史】，以【文章主题】为核心，撰写一篇全新的 HTML 格式资讯文章。" +
             "要求：\n" +
             "1. 标题保持：尽量保留提供的【文章主题】核心语意作为标题；\n" +
@@ -294,7 +321,12 @@ public class RealAIServiceImpl implements AIService {
             "   - **AI 补位配图**：如果你认为素材原图质量太差、有严重水印，或者素材中根本没有图片，你必须自拟 1 张配图描述，并使用占位格式：\n" +
             "     `<img data-ai-rebuild=\"true\" data-prompt=\"A detailed English descriptive prompt\" src=\"https://images.unsplash.com/photo-1504711432869-0fd30f78bb14\" />`。\n" +
             "   - **【强制要求】**：`data-prompt` 属性必须使用英文描述。整篇文章必须至少包含 1 张图片标签。\n" +
-            "6. 只返回干净的纯 HTML 字符串，不要有 markdown 代码块标记，不要加任何前导或后缀文字。",
+            "6. 只返回干净的纯 HTML 字符串，不要有 markdown 代码块标记，不要加任何前导或后缀文字。";
+
+        String systemPrompt = resolveSystemPrompt("GENERATION", specId, defaultSystem);
+        
+        String res = call(
+            systemPrompt,
             "文章主题：" + topic + "\n参考素材/原文内容：" + outline
         );
 
@@ -426,15 +458,14 @@ public class RealAIServiceImpl implements AIService {
     }
 
     @Override
-    public String polishContent(String content) {
-        return call(
-            "你是专业的中文内容润色专家。请对以下文章进行深度润色：" +
+    public String polishContent(String content, Long specId) {
+        String defaultSystem = "你是专业的中文内容润色专家。请对以下文章进行深度润色：" +
             "1. 优化语句表达，使其更加专业流畅；" +
             "2. 增强阅读冲击力和感染力；" +
             "3. 保持原有 HTML 标签结构不变；" +
-            "4. 只返回润色后的完整 HTML 内容，不要加任何说明。",
-            content
-        );
+            "4. 只返回润色后的完整 HTML 内容，不要加任何说明。";
+            
+        return call(resolveSystemPrompt("POLISH", specId, defaultSystem), content);
     }
 
     @Override
@@ -526,12 +557,14 @@ public class RealAIServiceImpl implements AIService {
         return call(systemPrompt, userPrompt).trim();
     }
     @Override
-    public String analyzeNews(String title, String content) {
-        String systemPrompt = "你是一个专业的新闻分析专家。请对提供的新闻内容进行深度解读。\n" +
+    public String analyzeNews(String title, String content, Long specId) {
+        String defaultSystem = "你是一个专业的新闻分析专家。请对提供的新闻内容进行深度解读。\n" +
             "要求输出如下 Markdown 格式：\n" +
             "💡 **核心价值**：一句话点出该新闻对读者的实际意义或潜在影响。\n" +
             "🚀 **启发思考**：提供 1-2 个基于该新闻的独特观点或对未来的预测。\n" +
             "📌 **场景标签**：提供 3 个相关的 #标签。";
+            
+        String systemPrompt = resolveSystemPrompt("SUMMARY", specId, defaultSystem);
             
         String userPrompt = "【新闻标题】：\n" + title + "\n\n【新闻正文】：\n" + 
             (content.length() > 5000 ? content.substring(0, 5000) : content);

@@ -46,10 +46,11 @@ public class AIController {
     }
 
     @PostMapping("/generate-article")
-    public Map<String, String> generateArticle(@RequestBody Map<String, String> request) {
-        String topic = request.get("topic");
-        String outline = request.getOrDefault("outline", "综合分析");
-        String html = aiService.generateFullArticle(topic, outline);
+    public Map<String, String> generateArticle(@RequestBody Map<String, Object> request) {
+        String topic = (String) request.get("topic");
+        String outline = (String) request.getOrDefault("outline", "综合分析");
+        Long specId = request.get("specId") != null ? Long.valueOf(request.get("specId").toString()) : null;
+        String html = aiService.generateFullArticle(topic, outline, specId);
         return Map.of("content", html);
     }
 
@@ -68,9 +69,10 @@ public class AIController {
     }
 
     @PostMapping("/polish")
-    public Map<String, String> polish(@RequestBody Map<String, String> request) {
-        String content = request.get("content");
-        String result = aiService.polishContent(content);
+    public Map<String, String> polish(@RequestBody Map<String, Object> request) {
+        String content = (String) request.get("content");
+        Long specId = request.get("specId") != null ? Long.valueOf(request.get("specId").toString()) : null;
+        String result = aiService.polishContent(content, specId);
         return Map.of("content", result);
     }
 

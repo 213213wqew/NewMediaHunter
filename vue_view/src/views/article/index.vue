@@ -9,14 +9,45 @@
       <main class="hub-main editor-workspace">
         <div class="editor-header">
           <input v-model="form.title" class="main-title-input" placeholder="请在这里输入文章标题..." />
-          <div class="ai-writing-banner" v-if="valueHtml">
+          <div class="ai-writing-banner" v-if="valueHtml || (leftTab === 'news' && selectedNews)">
             <div class="ai-actions">
+              <!-- 新增：创作风格选择联动 -->
+              <div class="spec-selector-group">
+                <div class="mini-selector">
+                  <span class="sel-label">撰稿风格：</span>
+                  <select v-model="selectedSpecId" class="banner-select">
+                    <option :value="null">-- 默认风格 --</option>
+                    <option v-for="s in specListByCat('GENERATION')" :key="s.id" :value="s.id">
+                      {{ s.name }} {{ s.isDefault ? '(默认)' : '' }}
+                    </option>
+                  </select>
+                </div>
+                <div class="mini-selector">
+                  <span class="sel-label">润色风格：</span>
+                  <select v-model="selectedPolishSpecId" class="banner-select">
+                    <option :value="null">-- 默认风格 --</option>
+                    <option v-for="s in specListByCat('POLISH')" :key="s.id" :value="s.id">
+                      {{ s.name }} {{ s.isDefault ? '(默认)' : '' }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+
               <button 
-                class="btn btn-secondary glow-effect" 
+                v-if="leftTab === 'news'"
+                class="btn btn-primary glow-effect" 
+                :disabled="aiWriting || !selectedNews" 
+                @click="handleAiWrite"
+                style="margin-right: 10px;"
+              >
+                🪄 一键智能撰稿
+              </button>
+              <button 
+                class="btn btn-secondary" 
                 :disabled="aiWriting || !valueHtml" 
                 @click="handleAiPolish"
               >
-                ✨ AI 润色原文
+                ✨ AI 分解润色
               </button>
               <button 
                 v-if="selectedNews"
@@ -32,7 +63,7 @@
                 @click="handleAiSmartImages"
                 style="margin-left: 10px; border: 1px solid rgba(255,255,255,0.1)"
               >
-                🖼️ 一键智能插图
+                🖼️ 智能插图
               </button>
             </div>
           </div>
@@ -355,6 +386,7 @@ import { Editor, Toolbar } from '@wangeditor/editor-for-vue';
 import { getAccountList } from '../../api/account';
 import { saveArticle, getArticleList, getArticle } from '../../api/article';
 import { submitPublishTask, getAiSummary, getAiSuggestedTitles, getAiTags, getAiCategory } from '../../api/publish';
+import { getPlatformList } from '../../api/platform';
 import { 
     fetchHotNews, 
     fetchArticleContent, 
@@ -368,7 +400,6 @@ import {
     generateImage,
     type HotNews 
 } from '../../api/ai';
-import { getPlatformList } from '../../api/platform';
 import type { Account, Article, Platform } from '../../types';
 import request from '../../utils/request';
 import { ElMessage } from 'element-plus';
@@ -436,6 +467,32 @@ const currentSnapshot = ref<string | null>(null);
 const autoTimer = ref<any>(null);
 const currentProcessingPlatform = ref<string | null>(null);
 const platformList = ref<Platform[]>([]);
+
+// 写作规范联动
+import { getSpecList, type AiWritingSpecification } from '../../api/aiSpec';
+const fullSpecList = ref<AiWritingSpecification[]>([]);
+const selectedSpecId = ref<number | null>(null);
+const selectedPolishSpecId = ref<number | null>(null);
+
+const specListByCat = (cat: string) => {
+  return fullSpecList.value.filter(s => s.category === cat);
+};
+
+const loadWritingSpecs = async () => {
+  try {
+    const res = await getSpecList();
+    fullSpecList.value = res || [];
+    
+    // 自动预设默认项
+    const genDefault = fullSpecList.value.find(s => s.category === 'GENERATION' && s.isDefault);
+    if (genDefault) selectedSpecId.value = genDefault.id!;
+    
+    const polishDefault = fullSpecList.value.find(s => s.category === 'POLISH' && s.isDefault);
+    if (polishDefault) selectedPolishSpecId.value = polishDefault.id!;
+  } catch (e) {
+    console.error('加载 AI 规范失败', e);
+  }
+};
 
 // 预览平台
 const selectedPlatform = ref('default');
@@ -507,7 +564,8 @@ onMounted(async () => {
       }).catch(e => console.warn('加载草稿失败', e));
     }
 
-    // 4. 并发加载其他数据（放到后面防止阻塞前面的同步/本地逻辑）
+    // 4. 并发加载其他数据
+    loadWritingSpecs();
     loadMyArticles();
     // 4. 加载平台和账号列表 (受活动渠道限制)
     try {
@@ -739,8 +797,8 @@ const handleAiWrite = async () => {
     
     fetchedOriginalText.value = originalText;
 
-    // 3. 提交给 AI 进行深度改写，将原始文本作为“大纲/上下文”传入
-    const res = await generateArticle(selectedNews.value.title, originalText);
+    // 3. 提交给 AI 进行深度改写，携带选中的 specId
+    const res = await generateArticle(selectedNews.value.title, originalText, selectedSpecId.value);
     
     // 4. 更新对比弹窗内容 (后台保留供手动查看)
     originalContent.value = `<h3>${selectedNews.value.title}</h3>` + 
@@ -959,7 +1017,7 @@ const handleAiPolish = async () => {
   if (!valueHtml.value) return;
   aiWriting.value = true;
   try {
-    const res = await polishArticle(valueHtml.value);
+    const res = await polishArticle(valueHtml.value, selectedPolishSpecId.value);
     originalContent.value = valueHtml.value;
     polishedContent.value = res.content;
     polishMode.value = 'polish';
@@ -1789,6 +1847,87 @@ const startAutomationPolling = () => {
   background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
   border: 1px solid rgba(59, 130, 246, 0.2);
   border-radius: 12px;
+}
+
+.spec-selector-group {
+  display: flex;
+  gap: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.mini-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sel-label {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.banner-select {
+  background: transparent;
+  border: none;
+  color: var(--accent-blue);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+  padding: 4px 0;
+  border-bottom: 1px dashed rgba(79, 142, 247, 0.3);
+}
+
+.banner-select:hover {
+  border-bottom-style: solid;
+}
+
+.banner-select option {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.ai-spec-selectors {
+  display: flex;
+  gap: 20px;
+}
+
+.spec-select-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spec-select-item label {
+  font-size: 13px;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.spec-selector {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  outline: none;
+  cursor: pointer;
+  min-width: 140px;
+}
+
+.spec-selector:focus {
+  border-color: #3b82f6;
+}
+
+.spec-selector option {
+  background: #1e293b;
+  color: #e2e8f0;
 }
 
 .ai-info {

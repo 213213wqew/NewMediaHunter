@@ -119,7 +119,11 @@ public class ToutiaoAdapter implements PlatformAdapter {
             } catch (Exception ignored) {}
         }
         PythonSkillRunner.SkillExecutionResult result = pythonSkillRunner.execute(meta, params);
-        if (result != null && result.isSuccess() && result.getData() != null) {
+        // 只有技能完整跑完并返回 success 才视为成功；中途关闭浏览器等会返回 failure，此处抛异常让 PublishServiceImpl 将任务标为失败
+        if (result == null || !result.isSuccess()) {
+            throw new RuntimeException(result != null && result.getMessage() != null ? result.getMessage() : "头条视频发布失败或流程未完成（如中途关闭浏览器）");
+        }
+        if (result.getData() != null) {
             boolean skippedPublish = Boolean.TRUE.equals(result.getData().get("skipped_publish"));
             if (skippedPublish) {
                 task.setPublishStatus(2);
@@ -132,7 +136,7 @@ public class ToutiaoAdapter implements PlatformAdapter {
                 else if (result.getData().get("final_url") != null) task.setPlatformArticleUrl(String.valueOf(result.getData().get("final_url")));
             }
         }
-        boolean skipped = result != null && result.getData() != null && Boolean.TRUE.equals(result.getData().get("skipped_publish"));
+        boolean skipped = result.getData() != null && Boolean.TRUE.equals(result.getData().get("skipped_publish"));
         if (!skipped && task.getPlatformArticleId() == null) {
             task.setPlatformArticleId("tt_video_" + System.currentTimeMillis() / 1000);
             task.setPlatformArticleUrl("https://www.toutiao.com/video/" + task.getPlatformArticleId());

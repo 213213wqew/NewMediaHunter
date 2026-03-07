@@ -719,6 +719,7 @@ textarea.form-input {
   cursor: pointer;
   transition: all 0.2s ease;
 }
+
 .theme-toggle:hover {
   background: rgba(255, 255, 255, 0.1);
 }
@@ -733,25 +734,31 @@ textarea.form-input {
   --text-muted: #64748b;
   --border-color: rgba(0, 0, 0, 0.08);
 }
+
 .layout[data-theme="light"] .topbar {
   background: rgba(255, 255, 255, 0.9);
   border-bottom-color: rgba(0, 0, 0, 0.08);
 }
+
 .layout[data-theme="light"] .sidebar {
   background: var(--bg-sidebar);
   border-right-color: var(--border-color);
 }
+
 .layout[data-theme="light"] .nav-item:hover {
   background: rgba(0, 0, 0, 0.05);
 }
+
 .layout[data-theme="light"] .sidebar-user {
   background: rgba(0, 0, 0, 0.04);
 }
+
 .layout[data-theme="light"] .theme-toggle {
   background: rgba(0, 0, 0, 0.06);
   border-color: var(--border-color);
   color: var(--text-primary);
 }
+
 .layout[data-theme="light"] .theme-toggle:hover {
   background: rgba(0, 0, 0, 0.1);
 }
@@ -760,80 +767,174 @@ textarea.form-input {
 .layout[data-theme="light"] .hot-news-view .top-tabs {
   border-bottom-color: rgba(0, 0, 0, 0.1);
 }
+
 .layout[data-theme="light"] .hot-news-view .tab-btn {
   color: #475569;
 }
+
 .layout[data-theme="light"] .hot-news-view .tab-btn:hover {
   color: #1e293b;
   background: rgba(0, 0, 0, 0.06);
 }
+
 .layout[data-theme="light"] .hot-news-view .filter-section {
   background: rgba(0, 0, 0, 0.03);
   border-color: rgba(0, 0, 0, 0.1);
 }
+
 .layout[data-theme="light"] .hot-news-view .filter-label {
   color: #475569;
 }
+
 .layout[data-theme="light"] .hot-news-view .chip {
   border-color: rgba(0, 0, 0, 0.15);
   background: rgba(0, 0, 0, 0.04);
   color: #334155;
 }
+
 .layout[data-theme="light"] .hot-news-view .chip:hover {
   border-color: rgba(244, 63, 94, 0.5);
   color: #1e293b;
 }
+
 .layout[data-theme="light"] .hot-news-view .chip.active {
   color: #e11d48;
   background: rgba(244, 63, 94, 0.12);
 }
+
 .layout[data-theme="light"] .hot-news-view .search-group {
   background: rgba(0, 0, 0, 0.04);
   border-color: rgba(0, 0, 0, 0.12);
 }
+
 .layout[data-theme="light"] .hot-news-view .search-group input {
   color: #1e293b;
 }
+
 .layout[data-theme="light"] .hot-news-view .search-group input::placeholder {
   color: #64748b;
 }
+
 .layout[data-theme="light"] .hot-news-view .table-wrap {
   background: rgba(0, 0, 0, 0.02);
   border-color: rgba(0, 0, 0, 0.1);
 }
+
 .layout[data-theme="light"] .hot-news-view .table-header-row {
   color: #475569;
   background: rgba(0, 0, 0, 0.05);
   border-bottom-color: rgba(0, 0, 0, 0.1);
 }
+
 .layout[data-theme="light"] .hot-news-view .table-row {
   color: #334155;
   border-bottom-color: rgba(0, 0, 0, 0.06);
 }
+
 .layout[data-theme="light"] .hot-news-view .table-row:hover {
   background: rgba(0, 0, 0, 0.04);
 }
+
 .layout[data-theme="light"] .hot-news-view .title-main {
   color: #1e293b;
 }
+
 .layout[data-theme="light"] .hot-news-view .title-meta,
 .layout[data-theme="light"] .hot-news-view .title-keywords {
   color: #64748b;
 }
+
 .layout[data-theme="light"] .hot-news-view .sortable:hover {
   color: #475569;
 }
+
 .layout[data-theme="light"] .hot-news-view .empty-placeholder {
   color: #64748b;
 }
+
 .layout[data-theme="light"] .hot-news-view .empty-placeholder h3 {
   color: #334155;
 }
+
 .layout[data-theme="light"] .hot-news-view .btn-outline {
   color: #475569;
   border-color: rgba(0, 0, 0, 0.2);
 }
+
 .layout[data-theme="light"] .hot-news-view .btn-outline:hover {
   background: rgba(0, 0, 0, 0.06);
   color: #1e293b;
+}
+
+/* ===== 写作规范：拟人化高级界面适配 (Premium Interface) ===== */
+.el-overlay {
+  backdrop-filter: blur(6px) !important;
+  background-color: rgba(0, 0, 0, 0.4) !important;
+}
+
+.premium-spec-dialog {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+  overflow: hidden;
+}
+
+.premium-spec-dialog .el-dialog__header {
+  padding: 24px 24px 0 !important;
+  margin-right: 0 !important;
+}
+
+.premium-spec-dialog .el-dialog__title {
+  color: var(--text-primary) !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.5px;
+}
+
+.premium-spec-dialog .el-dialog__body {
+  padding: 24px !important;
+}
+
+/* 对话框内表单元素微调 */
+.premium-spec-dialog .form-label {
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.premium-spec-dialog .form-input,
+.premium-spec-dialog .form-textarea {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
+  border-radius: 12px !important;
+}
+
+.premium-spec-dialog .form-input:focus,
+.premium-spec-dialog .form-textarea:focus {
+  border-color: var(--accent-blue) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* ===== 下拉框 (Select) 拟人化适配修正 ===== */
+select.form-input {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%234f8ef7'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px;
+  padding-right: 40px !important;
+  cursor: pointer;
+}
+
+select.form-input option {
+  background-color: #ffffff;
+  color: #1e293b;
+  padding: 12px;
+}
+
+[data-theme="dark"] select.form-input option {
+  background-color: #1a1d2e;
+  color: #e2e8f0;
 }

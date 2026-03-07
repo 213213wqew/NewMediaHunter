@@ -44,6 +44,9 @@
         <router-link to="/ai-settings" class="nav-item" :class="{ active: $route.path === '/ai-settings' }">
           <span class="nav-icon">🤖</span> AI 设置
         </router-link>
+        <router-link to="/ai-writing-specs" class="nav-item" :class="{ active: $route.path === '/ai-writing-specs' }">
+          <span class="nav-icon">📜</span> 写作规范
+        </router-link>
       </nav>
 
       <div class="sidebar-footer">
@@ -99,12 +102,16 @@ const THEME_KEY = 'app-theme';
 
 onMounted(() => {
   const saved = localStorage.getItem(THEME_KEY) as 'light' | 'dark' | null;
-  if (saved === 'light' || saved === 'dark') theme.value = saved;
+  if (saved === 'light' || saved === 'dark') {
+    theme.value = saved;
+  }
+  document.documentElement.setAttribute('data-theme', theme.value);
 });
 
 function toggleTheme() {
   theme.value = theme.value === 'dark' ? 'light' : 'dark';
   localStorage.setItem(THEME_KEY, theme.value);
+  document.documentElement.setAttribute('data-theme', theme.value);
 }
 
 watch(

@@ -38,8 +38,8 @@ export const fetchArticleContent = (url: string): Promise<{ content: string }> =
     return request.get('/hot-news/article-content', { params: { url } });
 };
 
-export const generateArticle = (topic: string, outline: string): Promise<{ content: string }> => {
-    return request.post('/ai/generate-article', { topic, outline });
+export const generateArticle = (topic: string, outline: string, specId?: number | null): Promise<{ content: string }> => {
+    return request.post('/ai/generate-article', { topic, outline, specId });
 };
 
 export const suggestTitles = (title: string, content: string): Promise<string[]> => {
@@ -50,8 +50,8 @@ export const matchImage = (keyword: string): Promise<{ url: string }> => {
     return request.post('/ai/match-image', { keyword });
 };
 
-export const polishArticle = (content: string): Promise<{ content: string }> => {
-    return request.post('/ai/polish', { content });
+export const polishArticle = (content: string, specId?: number | null): Promise<{ content: string }> => {
+    return request.post('/ai/polish', { content, specId });
 };
 
 export const suggestImages = (content: string): Promise<string[]> => {

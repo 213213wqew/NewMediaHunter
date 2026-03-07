@@ -39,6 +39,8 @@
               class="input input-addr input-full"
               :class="{ 'input-disabled': publishing }"
               :disabled="publishing"
+              readonly
+              title="视频地址由选择文件确定，不可修改"
               placeholder="地址+文件名"
             />
             <div class="item-status-info" v-if="item.status !== 'idle'">
