@@ -19,9 +19,10 @@
           <span class="count">{{ getCountByCat(f.value) }}</span>
         </div>
         
-        <div class="init-trigger" @click="handleInit">
+        <div class="init-trigger" @click="handleInit" title="用代码中的 ai_presets.json 覆盖当前系统预设；修改了 JSON 后需点此处才能生效">
           <i class="ri-refresh-line"></i>
           <span>还原所有建议预设</span>
+          <span class="init-hint">修改 JSON 后点此生效</span>
         </div>
       </aside>
 
@@ -168,12 +169,11 @@ const editingSpec = reactive<EditingSpec>({
   isDefault: false
 });
 
-// 数据加载
+// 数据加载：始终拉取全量列表，侧栏数量基于全量计算；当前分类只用于左侧筛选展示
 const loadSpecs = async () => {
   loading.value = true;
   try {
-    const res: any = await getSpecList(currentFilter.value === 'ALL' ? undefined : currentFilter.value);
-    // 兼容返回格式
+    const res: any = await getSpecList(undefined);
     specs.value = Array.isArray(res) ? res : (res?.data || []);
   } catch (err) {
     ElMessage.error('加载规范失败');
@@ -472,6 +472,7 @@ const handleInit = async () => {
   font-size: 12px;
 }
 .init-trigger:hover { border-color: var(--spec-accent); color: var(--spec-accent); background: var(--spec-accent-soft); }
+.init-hint { font-size: 10px; opacity: 0.85; }
 
 .list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
 .list-title { font-size: 20px; font-weight: 700; color: var(--spec-text-main); }

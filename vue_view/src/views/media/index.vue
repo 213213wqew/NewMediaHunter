@@ -5,7 +5,16 @@
         <div class="page-title">素材管理中心</div>
         <div class="page-subtitle">管理您的图片和视频资源，支持一键预览与清理</div>
       </div>
-      <div class="page-actions">
+      <div class="page-actions" style="display: flex; gap: 10px;">
+        <button v-if="mediaList.length > 0" class="btn" :class="isSelectionMode ? 'btn-primary' : 'btn-ghost'" @click="toggleSelectionMode">
+          {{ isSelectionMode ? '✅ 完成选择' : '🗳️ 批量管理' }}
+        </button>
+        <button v-if="isSelectionMode && selectedIds.size > 0" class="btn btn-danger" @click="handleBatchDelete">
+          🗑️ 删除选中 ({{ selectedIds.size }})
+        </button>
+        <button v-if="mediaList.length > 0" class="btn btn-ghost" style="color: #ff5555;" @click="handleDeleteAll">
+          💀 清空全部
+        </button>
         <label class="btn btn-primary" style="cursor: pointer;">
           📤 上传素材
           <input type="file" hidden @change="handleUpload" accept="image/*,video/*" />
@@ -34,14 +43,20 @@
 
     <!-- 素材列表网格 -->
     <div class="media-grid">
-      <div v-for="item in filteredList" :key="item.id" class="media-card card">
-        <div class="media-preview" @click="handlePreview(item)">
+      <div v-for="item in filteredList" :key="item.id" class="media-card card" :class="{ 'is-selected': selectedIds.has(item.id!) }" @click="handleCardClick(item)">
+        <div class="media-preview">
           <img v-if="item.fileType === 'image'" :src="item.platformMediaUrl" alt="" />
           <div v-else class="video-placeholder">
             <div style="font-size: 40px;">🎬</div>
             <div style="font-size: 12px; margin-top: 8px;">视频素材</div>
           </div>
-          <div class="media-overlay">
+          
+          <!-- 选择框 -->
+          <div v-if="isSelectionMode" class="selection-box">
+            <input type="checkbox" :checked="selectedIds.has(item.id!)" @click.stop />
+          </div>
+
+          <div v-if="!isSelectionMode" class="media-overlay">
             <span>🔍 预览</span>
           </div>
         </div>
@@ -49,7 +64,7 @@
           <div class="media-name" :title="item.originalUrl">{{ item.originalUrl }}</div>
           <div class="media-meta">
             <span>{{ item.fileType === 'image' ? '🖼️ 图片' : '🎥 视频' }}</span>
-            <span style="cursor: pointer; color: #ff5555;" @click="handleDelete(item.id!)">🗑️ 删除</span>
+            <span v-if="!isSelectionMode" style="cursor: pointer; color: #ff5555;" @click.stop="handleDelete(item.id!)">🗑️ 删除</span>
           </div>
         </div>
       </div>
@@ -91,6 +106,8 @@ import type { MediaResource } from '../../types';
 const mediaList = ref<MediaResource[]>([]);
 const currentFilter = ref('all');
 const previewItem = ref<MediaResource | null>(null);
+const isSelectionMode = ref(false);
+const selectedIds = ref<Set<number>>(new Set());
 
 const filters = [
   { label: '全部', value: 'all' },
@@ -117,7 +134,28 @@ onMounted(() => {
 });
 
 const handlePreview = (item: MediaResource) => {
+  if (isSelectionMode.value) return;
   previewItem.value = item;
+};
+
+const toggleSelectionMode = () => {
+  isSelectionMode.value = !isSelectionMode.value;
+  if (!isSelectionMode.value) {
+    selectedIds.value.clear();
+  }
+};
+
+const handleCardClick = (item: MediaResource) => {
+  if (isSelectionMode.value) {
+    const id = item.id!;
+    if (selectedIds.value.has(id)) {
+      selectedIds.value.delete(id);
+    } else {
+      selectedIds.value.add(id);
+    }
+  } else {
+    handlePreview(item);
+  }
 };
 
 const handleDelete = async (id: number) => {
@@ -127,6 +165,31 @@ const handleDelete = async (id: number) => {
     await loadMedia();
   } catch (err) {
     alert('删除失败');
+  }
+};
+
+const handleBatchDelete = async () => {
+  const count = selectedIds.value.size;
+  if (count === 0) return;
+  if (!confirm(`确定要永久删除这 ${count} 个素材吗？`)) return;
+  
+  try {
+    await request.post('/media/batch-delete', Array.from(selectedIds.value));
+    selectedIds.value.clear();
+    isSelectionMode.value = false;
+    await loadMedia();
+  } catch (err) {
+    alert('批量删除失败');
+  }
+};
+
+const handleDeleteAll = async () => {
+  if (!confirm('⚠️ 警告：这将永久删除您的所有素材且不可恢复！确定要清空吗？')) return;
+  try {
+    await request.post('/media/delete-all');
+    await loadMedia();
+  } catch (err) {
+    alert('清空失败');
   }
 };
 
@@ -151,6 +214,7 @@ const handleUpload = async (e: Event) => {
 <style scoped>
 .filter-group {
   display: flex;
+  gap: 8px;
   background: rgba(255, 255, 255, 0.03);
   padding: 4px;
   border-radius: 8px;
@@ -175,7 +239,37 @@ const handleUpload = async (e: Event) => {
 .media-card {
   padding: 0;
   overflow: hidden;
-  transition: transform 0.2s;
+  transition: all 0.2s;
+  position: relative;
+  border: 1px solid transparent;
+}
+
+.media-card.is-selected {
+  border-color: var(--accent-blue);
+  background: rgba(var(--accent-blue-rgb), 0.1);
+  transform: scale(0.98);
+}
+
+.selection-box {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  background: white;
+  border-radius: 4px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.selection-box input {
+  margin: 0;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
 }
 
 .media-card:hover {

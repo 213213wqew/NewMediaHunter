@@ -78,9 +78,11 @@
         </div>
       </header>
       <div class="page-content">
-        <transition name="fade-slide" mode="out-in">
-          <router-view :key="$route.path" />
-        </transition>
+        <router-view v-slot="{ Component }">
+          <keep-alive :exclude="['ArticlePage']">
+            <component :is="Component" />
+          </keep-alive>
+        </router-view>
       </div>
     </div>
   </div>

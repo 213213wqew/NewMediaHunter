@@ -66,7 +66,14 @@ def execute(params, session_dir):
     """
     title = params.get("title", "未命名文章")
     content = params.get("htmlContent", "")
-    publish_url = "https://baijiahao.baidu.com/builder/rc/edit?type=news&is_from_cms=1"
+    platform_settings = params.get("platformSettings", {})
+    publish_type = platform_settings.get("publishType", "news")
+    
+    if publish_type == "dynamic":
+        publish_url = "https://baijiahao.baidu.com/builder/rc/edit?type=dynamic&is_from_cms=1"
+    else:
+        publish_url = "https://baijiahao.baidu.com/builder/rc/edit?type=news&is_from_cms=1"
+        
     cookie_json_str = params.get("cookieJson", "")
 
     print(f"DEBUG: 启动浏览器, Session 路径: {session_dir}")
@@ -222,8 +229,9 @@ def execute(params, session_dir):
                 raise Exception(f"内容/话题注入环节深度故障: {ce}")
 
             # 5. 设置封面
-            print("DEBUG: 开始设置封面...")
-            # 如果出现“移动话题到文末”的提示框，点击确定
+            if publish_type != "dynamic":
+                print("DEBUG: 开始设置封面...")
+                # 如果出现“移动话题到文末”的提示框，点击确定
             def handle_move_modal():
                 try:
                     move_modal_btn = page.get_by_role("button", name="确定").last
@@ -242,19 +250,48 @@ def execute(params, session_dir):
                 single_radio = page.get_by_text("单图", exact=True).first
                 if single_radio.count() > 0:
                     single_radio.click(timeout=5000)
+                    time.sleep(0.5)
 
-                # 5.2 尝试提取正文图
-                has_extracted = False
-                extract_span = page.get_by_text("提取正文图", exact=True).first
-                if extract_span.count() > 0:
-                    extract_span.click(timeout=3000)
-                    print("DEBUG: 已尝试点击 '提取正文图'")
-                    time.sleep(2)
-                    has_extracted = True
+                has_set_cover = False
+                
+                # 优先级 1: 使用本地物理路径直接上传封面 (最稳定)
+                local_cover_path = params.get("localCoverPath")
+                if local_cover_path and os.path.exists(local_cover_path):
+                    print(f"DEBUG: 检测到本地封面路径，准备上传: {local_cover_path}")
+                    # 寻找上传按钮：可能是 .upload-btn 或包含了“上传图片”文字的元素
+                    upload_target = page.locator(".upload-btn, .web-uploader-container, .bjh-upload-wrapper").first
+                    if upload_target.count() > 0:
+                        try:
+                            with page.expect_file_chooser() as fc_info:
+                                upload_target.click(timeout=5000)
+                            file_chooser = fc_info.value
+                            file_chooser.set_files(local_cover_path)
+                            print("DEBUG: 本地封面图上传指令已发送")
+                            time.sleep(3) # 等待上传处理
+                            has_set_cover = True
+                        except Exception as ue:
+                            print(f"DEBUG: 尝试上传本地封面失败: {ue}")
+                
+                # 优先级 2: 提取正文图 (兜底)
+                if not has_set_cover:
+                    extract_span = page.get_by_text("提取正文图", exact=True).first
+                    if extract_span.count() > 0:
+                        extract_span.click(timeout=3000)
+                        print("DEBUG: 已尝试点击 '提取正文图'")
+                        time.sleep(2)
+                        
+                        # 检查是否有提取成功的确认按钮
+                        confirm_btn = page.locator(".extract-modal-confirm, button:has-text('确定')").last
+                        if confirm_btn.count() > 0:
+                            confirm_btn.click(timeout=3000)
+                            print("DEBUG: 已点击提取确认按钮")
+                            time.sleep(1)
+                        
+                        has_set_cover = True
                 
                 # 5.3 封面兜底：AI 封面状态机
-                if not has_extracted:
-                    print("DEBUG: 提取失败，启动 AI 封面状态机...")
+                if not has_set_cover:
+                    print("DEBUG: 所有设置尝试均未成功，启动 AI 封面状态机...")
                     js_script = """(title) => {
                       return new Promise((resolve) => {
                         let step = 0; let attempts = 0;

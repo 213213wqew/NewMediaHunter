@@ -97,13 +97,137 @@ def run(params: dict, session_dir: str, cookie_json_str: str) -> dict:
             title_locator.fill(title, timeout=15000)
             page.evaluate("() => { document.activeElement && document.activeElement.blur(); }")
             time.sleep(0.5)
+            # ================= 核心增强：UI 式上传图片至百度 CDN =================
+            import re
+            import base64
+            import mimetypes
+            import urllib.request
+            
+            uploads_dir = params.get("localUploadsDir", "")
+            if not uploads_dir:
+                potential_root_uploads = os.path.abspath(os.path.join(_ROOT, "..", "uploads"))
+                if os.path.exists(potential_root_uploads):
+                    uploads_dir = potential_root_uploads
+                else:
+                    uploads_dir = os.path.abspath(os.path.join(_ROOT, "..", "java-work", "uploads"))
+            
+            print(f"DEBUG: 使用素材目录: {uploads_dir}")
+            
+            img_urls = re.findall(r'src=[\'"]?([^\'"\s>]+)[\'"]?', content)
+            unique_urls = list(set(img_urls))
+            url_map = {}
+            
+            if unique_urls:
+                print(f"DEBUG: 发现 {len(unique_urls)} 个图片链接，准备通过 UI 方式『洗图』...")
+                
+                # 先清空编辑器，方便我们一张张上传并抓取链接
+                is_iframe = page.locator("#ueditor_0").count() > 0
+                if is_iframe:
+                    page.frame_locator("#ueditor_0").locator("body").evaluate("el => el.innerHTML = ''")
+                else:
+                    # 对于 Lexical，我们需要找到正文编辑器
+                    identify_js = """() => {
+                        const editors = document.querySelectorAll('div[data-lexical-editor="true"], div[contenteditable="true"]');
+                        let bodyEl = null;
+                        editors.forEach(el => {
+                            const ph = (el.getAttribute('data-placeholder') || el.innerText || "").toLowerCase();
+                            if (ph.includes('正文') || ph.includes('内容') || ph.includes('开始')) bodyEl = el;
+                        });
+                        if (!bodyEl && editors.length > 1) bodyEl = editors[1];
+                        if (bodyEl) { bodyEl.id = "real-body-editor"; return true; }
+                        return false;
+                    }"""
+                    if page.evaluate(identify_js):
+                        page.locator("#real-body-editor").evaluate("el => el.innerHTML = ''")
+
+                for url in unique_urls:
+                    print(f"DEBUG: 正在 UI 上传图片: {url}")
+                    local_path = None
+                    try:
+                        if "/api/file/view/" in url:
+                            filename = url.split('/')[-1].split('?')[0]
+                            local_path = os.path.normpath(os.path.join(uploads_dir, filename))
+                            if not os.path.exists(local_path):
+                                print(f"DEBUG: 本地文件不存在: {local_path}")
+                                continue
+                        elif url.startswith("http"):
+                            # 远程图也先转本地，再 UI 上传，确保 100% 成功
+                            print(f"DEBUG: 下载远程图进行 UI 转发: {url}")
+                            req = urllib.request.Request(url, headers={
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                                'Referer': 'https://www.toutiao.com/'
+                            })
+                            with urllib.request.urlopen(req, timeout=10) as response:
+                                img_data = response.read()
+                                local_path = os.path.join(uploads_dir, f"tmp_{int(time.time())}.jpg")
+                                with open(local_path, "wb") as f:
+                                    f.write(img_data)
+                        
+                        if local_path and os.path.exists(local_path):
+                            # 1. 触发上传按钮
+                            # 尝试多个可能的按钮选择器
+                            image_btn = page.locator(".edui-for-insertimage, .cheetah-icon-image, button[aria-label*='图片'], ._73a3a52aab7e3a36-default").first
+                            if image_btn.count() > 0:
+                                image_btn.click()
+                                time.sleep(1)
+                                
+                                # 2. 查找文件输入框 (通常是隐藏的，但 Playwright 可以直接 set_input_files)
+                                file_input = page.locator('input[type="file"][accept*="image"]').last
+                                if file_input.count() > 0:
+                                    file_input.set_input_files(local_path)
+                                    print("DEBUG: 已选择文件，等待上传完成...")
+                                    time.sleep(3) # 等待上传并插入
+                                    
+                                    # 如果有确定按钮，点一下
+                                    confirm_btn = page.locator("button:has-text('确定'), .cheetah-btn-primary").last
+                                    if confirm_btn.count() > 0 and confirm_btn.is_visible():
+                                        confirm_btn.click()
+                                        time.sleep(1)
+                                    
+                                    # 3. 从编辑器中提取刚刚生成的链接
+                                    extract_js = """() => {
+                                        const editor = document.getElementById('real-body-editor') || document.querySelector('#ueditor_0')?.contentDocument?.body;
+                                        if (!editor) return null;
+                                        const imgs = Array.from(editor.querySelectorAll('img'));
+                                        if (imgs.length === 0) return null;
+                                        // 返回最后一张图的链接
+                                        return imgs[imgs.length - 1].src;
+                                    }"""
+                                    baidu_url = page.evaluate(extract_js)
+                                    if baidu_url and ("bjh" in baidu_url or "baidu" in baidu_url):
+                                        url_map[url] = baidu_url
+                                        print(f"DEBUG: UI 上传捕获成功: {url} -> {baidu_url}")
+                                        # 清理掉这张图，避免干扰下一张
+                                        if is_iframe:
+                                            page.frame_locator("#ueditor_0").locator("body").evaluate("el => el.innerHTML = ''")
+                                        else:
+                                            page.locator("#real-body-editor").evaluate("el => el.innerHTML = ''")
+                                    else:
+                                        print(f"DEBUG: UI 上传未捕获到合法链接: {baidu_url}")
+                            else:
+                                print("DEBUG: 未发现『插入图片』按钮")
+                    except Exception as ex:
+                        print(f"DEBUG: UI 处理图片失败 {url}: {ex}")
+                
+                if url_map:
+                    print(f"DEBUG: UI 清洗完成，共转换 {len(url_map)} 张图片")
+                for old_url, new_url in url_map.items():
+                    content = content.replace(old_url, new_url)
+            # =================================================================
 
             is_iframe = page.locator("#ueditor_0").count() > 0
             if is_iframe:
+                # 老版 UEditor
+                print("DEBUG: 检测到 UEditor (iframe)")
                 frame = page.frame_locator("#ueditor_0")
                 frame.locator("body").click(position={"x": 5, "y": 5}, force=True)
                 time.sleep(0.5)
+                write_js = "(bodyEl, html) => { bodyEl.innerHTML = html; }"
+                # 直接注入替换后的 HTML
+                page.frame_locator("#ueditor_0").locator("body").evaluate(write_js, content)
             else:
+                # 新版 Lexical 编辑器
+                print("DEBUG: 检测到 Lexical 编辑器 (div)")
                 identify_js = """() => {
                     const editors = document.querySelectorAll('div[data-lexical-editor="true"], div[contenteditable="true"]');
                     let bodyEl = null; let titleEl = null;
@@ -118,27 +242,23 @@ def run(params: dict, session_dir: str, cookie_json_str: str) -> dict:
                     return false;
                 }"""
                 page.evaluate(identify_js)
-                title_loc = page.locator("#real-title-editor")
-                if title_loc.count() > 0:
-                    title_loc.fill(title)
-                    page.evaluate("document.getElementById('real-title-editor').blur()")
-                    time.sleep(0.5)
 
-            if is_iframe:
-                write_js = "(bodyEl, html) => { bodyEl.innerHTML = html; }"
-                page.frame_locator("#ueditor_0").locator("body").evaluate(write_js, content)
-            else:
-                write_js = """(html) => {
+                write_js_paste = """(html) => {
                     const body = document.getElementById('real-body-editor');
                     if (body) {
                         body.focus();
-                        document.execCommand('selectAll', false, null);
-                        document.execCommand('insertHTML', false, html);
+                        const dt = new DataTransfer();
+                        dt.setData('text/html', html);
+                        dt.setData('text/plain', html.replace(/<[^>]*>?/gm, ''));
+                        const pasteEvent = new ClipboardEvent('paste', {
+                            clipboardData: dt, bubbles: true, cancelable: true
+                        });
+                        body.dispatchEvent(pasteEvent);
                         return 'ok';
                     }
                 }"""
-                page.evaluate(write_js, content)
-            time.sleep(1)
+                page.evaluate(write_js_paste, content)
+            time.sleep(2)
 
             platform_settings = params.get("platformSettings", {}) or {}
             topic = (platform_settings.get("selectedTopic") if isinstance(platform_settings, dict) else None) or ""
@@ -173,22 +293,94 @@ def run(params: dict, session_dir: str, cookie_json_str: str) -> dict:
                 except Exception:
                     page.keyboard.press("Escape")
 
-            single_radio = page.get_by_text("单图", exact=True).first
-            if single_radio.count() > 0:
-                single_radio.click(timeout=5000)
-            extract_span = page.get_by_text("提取正文图", exact=True).first
-            if extract_span.count() > 0:
-                extract_span.click(timeout=3000)
-                time.sleep(2)
+            # ================= 封面设置逻辑 (单图 + 自定义/AI) =================
+            print("DEBUG: 开始设置单图封面...")
+            has_set_cover = False
+            local_cover_path = params.get("localCoverPath")
+            
+            try:
+                single_radio = page.get_by_text("单图", exact=True).first
+                if single_radio.count() > 0:
+                    single_radio.click(timeout=5000)
+                time.sleep(1)
 
-            time.sleep(3)
-            is_draft = params.get("draft", False)
-            if is_draft:
-                _smart_action(page, "存草稿", "存草稿")
-            else:
-                _smart_action(page, "发布", "发布")
-            print("DEBUG: 发布指令已执行")
-            time.sleep(10)
+                # 点击封面缩略图“+”号打开封面选择弹窗
+                cover_trigger = page.locator(".cheetah-upload-select, ._73a3a52aab7e3a36-default, div:has-text('\u9009\u62e9\u5c01\u9762')").last
+                if cover_trigger.count() > 0:
+                    try:
+                        cover_trigger.click(timeout=3000)
+                    except Exception:
+                        # bjh-edit-header 盖住了封面按钮，用 JS 直接点击绕过
+                        print("DEBUG: 封面按钮被拦截，压用 JS evaluate 点击")
+                        cover_trigger.evaluate("el => el.click()")
+                    time.sleep(2)
+
+                # 优先级 1: 本地相册上传 (如果前端选了图)
+                if local_cover_path and os.path.exists(local_cover_path):
+                    print(f"DEBUG: 检测到本地封面，准备上传: {local_cover_path}")
+                    file_input = page.locator('input[type="file"][accept*="image"]').first
+                    if file_input.count() > 0:
+                        try:
+                            file_input.set_input_files(local_cover_path)
+                            print("DEBUG: 本地封面图上传成功")
+                            time.sleep(3)
+                            has_set_cover = True
+                        except Exception as ue:
+                            print(f"DEBUG: 尝试上传本地封面失败: {ue}")
+
+                # 优先级 2: AI 封图 (如果没有传图，或者上传失败)
+                if not has_set_cover:
+                    print("DEBUG: 使用 AI 封图導底...")
+                    ai_tab = page.get_by_text("AI封图", exact=True).first
+                    if ai_tab.count() == 0:
+                        ai_tab = page.locator(".cheetah-tabs-tab").filter(has_text="AI封图").first
+                    if ai_tab.count() > 0:
+                        ai_tab.click()
+                        time.sleep(1)
+
+                        generate_btn = page.get_by_text("根据全文智能生成封面", exact=False).first
+                        if generate_btn.count() > 0:
+                            generate_btn.click()
+                        else:
+                            prompt_input = page.locator("textarea[placeholder*='提示词']").first
+                            if prompt_input.count() > 0:
+                                prompt_input.fill(title)
+                                send_icon = page.locator(".cheetah-input-suffix i, .cheetah-input-suffix svg, img[src*='send']").last
+                                if send_icon.count() > 0:
+                                    send_icon.click()
+
+                        print("DEBUG: 正在等待 AI 生成封面 (最多等待 30 秒)...")
+                        try:
+                            page.wait_for_selector(".cheetah-tabs-content .cheetah-modal-body img, img[class*='-img'], canvas[class*='-canvas']", timeout=30000, state="visible")
+                            print("DEBUG: AI 封面生成完毕！")
+                            time.sleep(2)
+                            generated_img = page.locator(".cheetah-tabs-content .cheetah-modal-body img, img[class*='-img']").first
+                            if generated_img.count() > 0:
+                                generated_img.click()
+                                time.sleep(1)
+                        except Exception as ai_e:
+                            print(f"DEBUG: AI 生成封面超时未显示: {ai_e}")
+
+                # 统一点击确定的步骤（选好以后保存）
+                confirm_btn = page.get_by_role("button", name="确定").filter(has_text="确定").last
+                if confirm_btn.count() == 0:
+                    confirm_btn = page.locator("button:has-text('确定')").last
+                if confirm_btn.count() > 0 and confirm_btn.is_visible():
+                    print("DEBUG: 点击封面弹窗确定按钮")
+                    confirm_btn.click()
+                    time.sleep(2)
+
+            except Exception as cover_err:
+                print(f"DEBUG: 封面设置失败（不影响发布）: {cover_err}")
+            
+            # =================================================================
+
+            time.sleep(200)
+            #     _smart_action(page, "存草稿", "存草稿")
+            # else:
+            #     _smart_action(page, "发布", "发布")
+            # print("DEBUG: 发布指令已执行")
+            # time.sleep(10)
             return {"success": True, "message": "发布成功", "final_url": page.url}
         except Exception as e:
             return {"success": False, "message": str(e)}

@@ -34,11 +34,11 @@ export const fetchHotNews = (keyword: string, tab?: string, filter?: HotNewsFilt
     return request.get('/hot-news/fetch', { params });
 };
 
-export const fetchArticleContent = (url: string): Promise<{ content: string }> => {
+export const fetchArticleContent = (url: string): Promise<{ content: string, images?: string[] }> => {
     return request.get('/hot-news/article-content', { params: { url } });
 };
 
-export const generateArticle = (topic: string, outline: string, specId?: number | null): Promise<{ content: string }> => {
+export const generateArticle = (topic: string, outline: string, specId?: number | null): Promise<{ content: string, images?: string[] }> => {
     return request.post('/ai/generate-article', { topic, outline, specId });
 };
 
@@ -50,7 +50,7 @@ export const matchImage = (keyword: string): Promise<{ url: string }> => {
     return request.post('/ai/match-image', { keyword });
 };
 
-export const polishArticle = (content: string, specId?: number | null): Promise<{ content: string }> => {
+export const polishArticle = (content: string, specId?: number | null): Promise<{ content: string, images?: string[] }> => {
     return request.post('/ai/polish', { content, specId });
 };
 

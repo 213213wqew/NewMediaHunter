@@ -21,7 +21,7 @@ import java.util.UUID;
 public class FileController {
 
     private final String uploadDir = "uploads/";
-    private final com.news.publish.repository.MediaResourceRepository mediaRepository;
+    private final com.news.publish.service.MediaResourceFileStorage mediaRepository;
 
     @PostMapping("/upload")
     public Map<String, Object> upload(@RequestParam("file") MultipartFile file) {
@@ -53,6 +53,7 @@ public class FileController {
             resource.setPlatformMediaUrl("/api/file/view/" + fileName);
             resource.setFileType(isVideoButton(extension) ? "video" : "image");
             resource.setUploadStatus(1); // 已上传本地
+            resource.setUserId(com.news.publish.interceptor.UserContext.getUserId());
             mediaRepository.save(resource);
 
             result.put("errno", 0);
@@ -71,9 +72,25 @@ public class FileController {
     }
 
     @GetMapping("/view/{fileName}")
-    public byte[] view(@PathVariable String fileName) throws IOException {
+    public org.springframework.http.ResponseEntity<byte[]> view(@PathVariable String fileName) throws IOException {
         Path path = Paths.get(uploadDir + fileName);
-        return Files.readAllBytes(path);
+        if (!Files.exists(path)) {
+            return org.springframework.http.ResponseEntity.notFound().build();
+        }
+        
+        String extension = fileName.substring(fileName.lastIndexOf(".")).toLowerCase();
+        org.springframework.http.MediaType mediaType = switch (extension) {
+            case ".png" -> org.springframework.http.MediaType.IMAGE_PNG;
+            case ".jpg", ".jpeg" -> org.springframework.http.MediaType.IMAGE_JPEG;
+            case ".gif" -> org.springframework.http.MediaType.IMAGE_GIF;
+            case ".webp" -> org.springframework.http.MediaType.valueOf("image/webp");
+            case ".mp4" -> org.springframework.http.MediaType.valueOf("video/mp4");
+            default -> org.springframework.http.MediaType.APPLICATION_OCTET_STREAM;
+        };
+
+        return org.springframework.http.ResponseEntity.ok()
+                .contentType(mediaType)
+                .body(Files.readAllBytes(path));
     }
 
     private boolean isVideoButton(String ext) {

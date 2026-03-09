@@ -539,24 +539,30 @@ function getStatusLabel(status: string) {
   return map[status] || '';
 }
 
-/** 轮询任务状态直到结束 */
+/** 轮询任务状态直到结束；超时设长，避免后端仍在执行时前端误报超时 */
 async function pollTaskStatus(videoItem: VideoItem, taskId: number) {
-  const maxRetries = 200; // 约 10 分钟（3s 一次）
+  const intervalMs = 3000;
+  const maxRetries = 1200; // 3s × 1200 = 60 分钟，多视频多账号时单任务排队+发布可能很久
   let retries = 0;
-  
+
   const timer = setInterval(async () => {
     retries++;
     if (retries > maxRetries) {
       clearInterval(timer);
+      // 若后端仍显示排队/发布中，不按失败处理，只提示继续等待
+      if (videoItem.status === 'queued' || videoItem.status === 'publishing') {
+        videoItem.statusText = '仍在排队/发布中，请稍候（可刷新页面后到「我的发文」查看）';
+        return;
+      }
       videoItem.status = 'error';
-      videoItem.statusText = '发布超时';
+      videoItem.statusText = '轮询超时';
       return;
     }
-    
+
     try {
       const task = await getTaskStatus(taskId);
       if (!task) return;
-      
+
       // 0:待处理, 1:待发布(已填写), 2:发布中, 3:成功, 4:失败
       if (task.publishStatus === 3) {
         clearInterval(timer);
@@ -570,14 +576,13 @@ async function pollTaskStatus(videoItem: VideoItem, taskId: number) {
         videoItem.status = 'publishing';
         videoItem.statusText = '正在发布（上传/操作浏览器）...';
       } else {
-        // 0/1 统一视为等待发布
         videoItem.status = 'queued';
         videoItem.statusText = '等待发布...';
       }
     } catch (err) {
       console.warn('轮询任务失败:', err);
     }
-  }, 3000);
+  }, intervalMs);
 }
 
 async function handlePublish() {
@@ -669,9 +674,8 @@ onMounted(async () => {
     }
     platformList.value = allPlatforms;
     accountList.value = accounts || [];
-    // 默认只选中「当前展示的平台」下的账号（例如只配置了头条则只选头条账号）
-    const platformIds = new Set(allPlatforms.map((p: Platform) => p.id));
-    form.selectedAccountIds = (accounts || []).filter((a: Account) => platformIds.has(a.platformId)).map((a: Account) => a.id);
+    // 默认不勾选任何账号，避免未选百度却因「全部默认选中」而执行百家号技能；用户需主动勾选要发布的账号
+    form.selectedAccountIds = [];
     form.selectedPlatforms = allPlatforms.map((p: Platform) => p.platformKey);
     allPlatforms.forEach((p: Platform) => initPlatformSettingsForPlatform(p.platformKey));
     allPlatforms.forEach((p: Platform) => {

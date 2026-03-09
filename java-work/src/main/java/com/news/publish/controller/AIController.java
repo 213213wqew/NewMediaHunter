@@ -11,6 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.select.Elements;
 
 @Slf4j
 @RestController
@@ -24,6 +28,20 @@ public class AIController {
     private PlatformTaskRepository platformTaskRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    private List<String> extractImagesFromHtml(String html) {
+        List<String> images = new ArrayList<>();
+        if (html == null || html.isEmpty()) return images;
+        Document doc = Jsoup.parse(html);
+        Elements imgs = doc.select("img");
+        imgs.forEach(img -> {
+            String src = img.attr("src");
+            if (src != null && !src.isEmpty() && !src.startsWith("data:image/svg+xml")) {
+                images.add(src);
+            }
+        });
+        return images;
+    }
 
     @PostMapping("/summary")
     public String getSummary(@RequestBody Map<String, String> request) {
@@ -46,12 +64,13 @@ public class AIController {
     }
 
     @PostMapping("/generate-article")
-    public Map<String, String> generateArticle(@RequestBody Map<String, Object> request) {
+    public Map<String, Object> generateArticle(@RequestBody Map<String, Object> request) {
         String topic = (String) request.get("topic");
         String outline = (String) request.getOrDefault("outline", "综合分析");
         Long specId = request.get("specId") != null ? Long.valueOf(request.get("specId").toString()) : null;
         String html = aiService.generateFullArticle(topic, outline, specId);
-        return Map.of("content", html);
+        List<String> images = extractImagesFromHtml(html);
+        return Map.of("content", html != null ? html : "", "images", images);
     }
 
     @PostMapping("/match-image")
@@ -69,11 +88,12 @@ public class AIController {
     }
 
     @PostMapping("/polish")
-    public Map<String, String> polish(@RequestBody Map<String, Object> request) {
+    public Map<String, Object> polish(@RequestBody Map<String, Object> request) {
         String content = (String) request.get("content");
         Long specId = request.get("specId") != null ? Long.valueOf(request.get("specId").toString()) : null;
         String result = aiService.polishContent(content, specId);
-        return Map.of("content", result);
+        List<String> images = extractImagesFromHtml(result);
+        return Map.of("content", result != null ? result : "", "images", images);
     }
 
     @PostMapping("/suggest-images")

@@ -36,6 +36,9 @@ public class BaijiahaoAdapter implements PlatformAdapter {
     @Autowired
     private SkillDiscoveryService skillDiscoveryService;
 
+    @Autowired
+    private com.news.publish.service.MediaResourceFileStorage mediaResourceFileStorage;
+
     @Override
     public String getPlatformKey() {
         return "baijiahao";
@@ -97,9 +100,75 @@ public class BaijiahaoAdapter implements PlatformAdapter {
             params.put("htmlContent", content != null ? content : article.getContent());
             params.put("summary", article.getSummary());
             params.put("tags", article.getTags());
+            // 将本地 uploads 的绝对路径传给 Python 脚本，避免路径猜测
+            String localUploadsDir = java.nio.file.Paths.get("uploads").toAbsolutePath().toString();
+            params.put("localUploadsDir", localUploadsDir);
+            log.info("本地素材目录: {}", localUploadsDir);
             if (article.getPlatformSettings() != null && !article.getPlatformSettings().isBlank()) {
                 try {
-                    params.put("platformSettings", new com.fasterxml.jackson.databind.ObjectMapper().readValue(article.getPlatformSettings(), Map.class));
+                    Map<String, Object> settings = new com.fasterxml.jackson.databind.ObjectMapper().readValue(article.getPlatformSettings(), Map.class);
+                    params.put("platformSettings", settings);
+                    
+                    // 封面图路径转换逻辑
+                    Map<String, Object> bjhSettings = (Map<String, Object>) settings.get("baijiahao");
+                    if (bjhSettings == null) bjhSettings = (Map<String, Object>) settings.get("bjh");
+                    
+                    if (bjhSettings != null) {
+                        String coverImage = (String) bjhSettings.get("coverImage");
+                        if (coverImage != null && !coverImage.isEmpty()) {
+                            if (coverImage.startsWith("/api/file/view/")) {
+                                String fileName = coverImage.substring("/api/file/view/".length());
+                                java.nio.file.Path path = java.nio.file.Paths.get("uploads", fileName).toAbsolutePath();
+                                if (java.nio.file.Files.exists(path)) {
+                                    params.put("localCoverPath", path.toString());
+                                    log.info("已解析百家号本地封面路径: {}", path);
+                                }
+                            } else if (coverImage.startsWith("http://") || coverImage.startsWith("https://")) {
+                                // 先查 MediaResource 表查询是否已存在本地副本
+                                com.news.publish.model.entity.MediaResource cached = 
+                                    mediaResourceFileStorage.findByOriginalUrl(coverImage).orElse(null);
+                                if (cached != null && cached.getPlatformMediaUrl() != null
+                                        && cached.getPlatformMediaUrl().startsWith("/api/file/view/")) {
+                                    String localFileName = cached.getPlatformMediaUrl().substring("/api/file/view/".length());
+                                    java.nio.file.Path localPath = java.nio.file.Paths.get("uploads", localFileName).toAbsolutePath();
+                                    if (java.nio.file.Files.exists(localPath)) {
+                                        params.put("localCoverPath", localPath.toString());
+                                        log.info("封面图命中本地缓存: {}", localPath);
+                                    } else {
+                                        log.warn("本地缓存文件不存在，将重新下载: {}", localPath);
+                                        cached = null; // 文件丢失，强制重下载
+                                    }
+                                }
+                                if (cached == null || !params.containsKey("localCoverPath")) {
+                                    try {
+                                        java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("bjh_cover_", ".jpg");
+                                        
+                                        // 伪装浏览器请求头以绕过防盗链 (resolve 403 Forbidden)
+                                        HttpHeaders headers = new HttpHeaders();
+                                        headers.set(HttpHeaders.USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+                                        headers.set(HttpHeaders.REFERER, "https://www.toutiao.com/");
+                                        HttpEntity<String> entity = new HttpEntity<>(headers);
+                                        
+                                        org.springframework.http.ResponseEntity<byte[]> res = restTemplate.exchange(
+                                                coverImage, 
+                                                org.springframework.http.HttpMethod.GET, 
+                                                entity, 
+                                                byte[].class
+                                        );
+                                        
+                                        byte[] imageBytes = res.getBody();
+                                        if (imageBytes != null) {
+                                            java.nio.file.Files.write(tempFile, imageBytes);
+                                            params.put("localCoverPath", tempFile.toAbsolutePath().toString());
+                                            log.info("已下载远程封面至临时文件: {}", tempFile.toAbsolutePath());
+                                        }
+                                    } catch (Exception e) {
+                                        log.error("下载远程封面图失败: {}", coverImage, e);
+                                    }
+                                }
+                            }
+                        }
+                    }
                 } catch (Exception ignored) {}
             }
             PythonSkillRunner.SkillExecutionResult result = pythonSkillRunner.execute(meta, params);

@@ -8,6 +8,10 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.select.Elements;
 
 @RestController
 @RequestMapping("/api/hot-news")
@@ -15,6 +19,20 @@ import java.util.Map;
 public class HotNewsController {
 
     private final HotNewsService hotNewsService;
+
+    private List<String> extractImagesFromHtml(String html) {
+        List<String> images = new ArrayList<>();
+        if (html == null || html.isEmpty()) return images;
+        Document doc = Jsoup.parse(html);
+        Elements imgs = doc.select("img");
+        imgs.forEach(img -> {
+            String src = img.attr("src");
+            if (src != null && !src.isEmpty() && !src.startsWith("data:image/svg+xml")) {
+                images.add(src);
+            }
+        });
+        return images;
+    }
 
     @GetMapping("/fetch")
     public List<HotNewsDto> fetchNews(
@@ -49,11 +67,12 @@ public class HotNewsController {
     }
 
     @GetMapping("/article-content")
-    public Map<String, String> fetchArticleContent(
+    public Map<String, Object> fetchArticleContent(
             @RequestParam String url,
             @RequestParam(required = false) String platform,
             @RequestParam(required = false) String contentType) {
         String content = hotNewsService.fetchArticleContent(url, platform, contentType);
-        return Map.of("content", content);
+        List<String> images = extractImagesFromHtml(content);
+        return Map.of("content", content, "images", images);
     }
 }

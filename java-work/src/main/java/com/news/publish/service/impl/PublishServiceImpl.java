@@ -10,6 +10,7 @@ import com.news.publish.service.AccountService;
 import com.news.publish.service.ArticleFileStorage;
 import com.news.publish.service.PublishTaskFileStorage;
 import com.news.publish.service.ComplianceService;
+import com.news.publish.service.MediaService;
 import com.news.publish.service.PublishService;
 import com.news.publish.service.adapter.PlatformAdapter;
 import com.news.publish.service.scheduler.VideoBatchScheduler;
@@ -38,6 +39,7 @@ public class PublishServiceImpl implements PublishService {
     private final com.news.publish.repository.PublishLogRepository logRepository;
     private final List<PlatformAdapter> adapters;
     private final com.news.publish.service.MediaService mediaService;
+    private final com.news.publish.service.MediaResourceFileStorage mediaResourceFileStorage;
     private final ComplianceService complianceService;
     private final Executor taskExecutor;
     private final VideoBatchScheduler videoBatchScheduler;
@@ -211,6 +213,35 @@ public class PublishServiceImpl implements PublishService {
                 recordLog(taskId, "INFO", "开始进行素材清洗与多平台同步...", null, null, null, null);
                 String cleanedContent = mediaService.cleanContent(article, account);
                 recordLog(taskId, "INFO", "素材洗涤完成", null, null, null, null);
+                
+                // 将本地化后的 HTML 回写到文章，这样前端下次加载时就能看到本地 URL
+                if (cleanedContent != null && !cleanedContent.equals(article.getContent())) {
+                    article.setContent(cleanedContent);
+                    // 同时更新 platformSettings 中的封面图 URL，避免封面图仍然指向旧外链
+                    if (article.getPlatformSettings() != null && !article.getPlatformSettings().isBlank()) {
+                        try {
+                            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                            java.util.Map<String, Object> settings = mapper.readValue(article.getPlatformSettings(), java.util.Map.class);
+                            java.util.Map<String, Object> bjhSettings = (java.util.Map<String, Object>) settings.get("baijiahao");
+                            if (bjhSettings != null) {
+                                String coverImage = (String) bjhSettings.get("coverImage");
+                                if (coverImage != null && (coverImage.startsWith("http://") || coverImage.startsWith("https://"))) {
+                                    // 查 MediaResource 表找封面图的本地副本
+                                    mediaResourceFileStorage.findByOriginalUrl(coverImage).ifPresent(r -> {
+                                        bjhSettings.put("coverImage", r.getPlatformMediaUrl());
+                                        log.info("封面图 URL 已自动同步为本地: {}", r.getPlatformMediaUrl());
+                                    });
+                                    settings.put("baijiahao", bjhSettings);
+                                    article.setPlatformSettings(mapper.writeValueAsString(settings));
+                                }
+                            }
+                        } catch (Exception ex) {
+                            log.warn("同步封面图 URL 失败: {}", ex.getMessage());
+                        }
+                    }
+                    articleFileStorage.save(article);
+                    log.info("文章图片已本地化并回写到数据库");
+                }
 
                 // 3. 执行发布
                 recordLog(taskId, "INFO", "正在连接 " + platformKey + " 接口...", null, null, null, null);

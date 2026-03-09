@@ -13,21 +13,21 @@
             <div class="ai-actions">
               <!-- 新增：创作风格选择联动 -->
               <div class="spec-selector-group">
-                <div class="mini-selector">
+                <div class="mini-selector" title="一键智能撰稿将按此处选择的提示词风格生成正文">
                   <span class="sel-label">撰稿风格：</span>
                   <select v-model="selectedSpecId" class="banner-select">
                     <option :value="null">-- 默认风格 --</option>
                     <option v-for="s in specListByCat('GENERATION')" :key="s.id" :value="s.id">
-                      {{ s.name }} {{ s.isDefault ? '(默认)' : '' }}
+                      {{ s.name }}{{ s.isDefault ? ' (默认)' : '' }}
                     </option>
                   </select>
                 </div>
-                <div class="mini-selector">
+                <div class="mini-selector" title="AI 分解润色将按此处选择的润色提示词处理正文">
                   <span class="sel-label">润色风格：</span>
                   <select v-model="selectedPolishSpecId" class="banner-select">
                     <option :value="null">-- 默认风格 --</option>
                     <option v-for="s in specListByCat('POLISH')" :key="s.id" :value="s.id">
-                      {{ s.name }} {{ s.isDefault ? '(默认)' : '' }}
+                      {{ s.name }}{{ s.isDefault ? ' (默认)' : '' }}
                     </option>
                   </select>
                 </div>
@@ -78,17 +78,20 @@
             </div>
             
             <Toolbar
+              :key="'tb-' + editorKey"
               class="w-toolbar"
               :editor="editorRef"
               :defaultConfig="toolbarConfig"
               mode="default"
             />
             <Editor
+              :key="'ed-' + editorKey"
               class="w-editor"
               v-model="valueHtml"
               :defaultConfig="editorConfig"
               mode="default"
               @onCreated="handleCreated"
+              @onChange="handleEditorChange"
             />
           </div>
           
@@ -132,28 +135,59 @@
 
               <!-- 独立设置区：仅在选中时显示 -->
               <div v-if="form.selectedPlatforms.includes(plat.platformKey) && (form.platformSettings as any)[plat.platformKey]" class="platform-settings-box">
+                <!-- 该平台下选择要发布的账号 -->
+                <div class="mini-form-group account-select-block">
+                  <label>📌 选择要发布的账号</label>
+                  <div v-if="getAccountsForPlatform(plat).length === 0" class="no-account-hint">该平台暂无绑定账号，请先在「账号管理」中绑定</div>
+                  <div v-else class="account-check-list">
+                    <label
+                      v-for="acc in getAccountsForPlatform(plat)"
+                      :key="acc.id"
+                      class="account-check-item"
+                    >
+                      <input
+                        type="checkbox"
+                        :checked="isAccountSelected(acc.id)"
+                        @change="toggleAccountSelection(acc.id)"
+                      />
+                      <span class="account-check-name">{{ acc.accountName }}</span>
+                    </label>
+                  </div>
+                </div>
+
                 <div class="settings-grid">
                   <div class="mini-form-group">
                     <label>📝 发布类型</label>
                     <select v-model="(form.platformSettings as any)[plat.platformKey].publishType" class="mini-input">
                       <option value="news">图文</option>
-                      <option value="video">视频</option>
+                      <option v-if="!['bjh', 'baijiahao'].includes(plat.platformKey)" value="video">视频</option>
                       <option value="dynamic">动态</option>
                     </select>
                   </div>
-                  <div class="mini-form-group skill-highlight">
-                    <label>🤖 独立代理 (Skill)</label>
-                    <select v-model="(form.platformSettings as any)[plat.platformKey].selectedSkillId" class="mini-input skill-select">
-                      <option value="">-- 通用自动化 --</option>
-                      <option 
-                        v-for="skill in availableSkills.filter(s => s.platform === plat.platformKey)" 
-                        :key="skill.id" 
-                        :value="skill.id"
-                      >
-                        ⚡ {{ skill.name }}
-                      </option>
-                    </select>
+
+                  <!-- 百家号封面设置：仅在非动态类型时显示 -->
+                  <div v-if="(['bjh', 'baijiahao'].includes(plat.platformKey)) && (form.platformSettings as any)[plat.platformKey].publishType !== 'dynamic'" class="mini-form-group span-2-rows">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <label>🖼️ 封面图 (共 {{ articleImages.length }} 张)</label>
+                      <button class="btn-mini-ai" style="padding: 2px 6px; font-size: 10px;" title="重新从正文提取图片" @click.stop="forceUpdateImages">🔄 提取</button>
+                    </div>
+                    <div class="cover-preview-wrapper" style="margin-top: 0;">
+                      <div v-show="articleImages.length > 0" class="cover-preview">
+                        <img :src="getCurrentCover(plat.platformKey)" />
+                        
+                        <!-- 封面切换控制 -->
+                        <div v-show="articleImages.length > 1" class="cover-nav">
+                          <button class="nav-btn prev" @click="prevCover(plat.platformKey)">◀</button>
+                          <span class="nav-info">{{ getCoverIndexLabel(plat.platformKey) }}</span>
+                          <button class="nav-btn next" @click="nextCover(plat.platformKey)">▶</button>
+                        </div>
+
+                        <span class="cover-badge">{{ (form.platformSettings as any)[plat.platformKey].coverImage === articleImages[0] || !(form.platformSettings as any)[plat.platformKey].coverImage ? '默认' : '自选' }}</span>
+                      </div>
+                      <div v-show="articleImages.length === 0" class="cover-empty">正文暂无图片</div>
+                    </div>
                   </div>
+
                   <div class="mini-form-group">
                     <label>🗂️ 内容分类</label>
                     <select v-model="(form.platformSettings as any)[plat.platformKey].category" class="mini-input">
@@ -241,26 +275,6 @@
             </div>
           </div>
         </div>
-
-        <div class="panel-header" style="margin-top: 10px;">
-          <div class="section-title">📱 仿真预览视角</div>
-        </div>
-
-          <div class="card setting-card automation-preview-card">
-            <div v-if="automationActive" class="live-viewport">
-              <div class="viewport-header">
-                <span>正在自动化发布至: {{ currentProcessingPlatform }}</span>
-                <span class="pulse-dot"></span>
-              </div>
-              <img :src="'data:image/png;base64,' + currentSnapshot" v-if="currentSnapshot" class="preview-snapshot" />
-              <div v-else class="loading-preview">正在连接浏览器视口...</div>
-            </div>
-            <div v-else class="preview-placeholder-modern">
-              <div class="placeholder-icon">🤖</div>
-              <div class="placeholder-text">发布时将在此显示实时自动化画面</div>
-              <button class="btn btn-ghost btn-sm" @click="handleSimulationPreview">切换至仿真预览</button>
-            </div>
-          </div>
         </div>
 
         <div class="selected-channels-area" v-if="selectedAccountNames.length > 0">
@@ -380,7 +394,9 @@
 
 <script setup lang="ts">
 import '@wangeditor/editor/dist/css/style.css'; 
-import { onBeforeUnmount, ref, shallowRef, onMounted, reactive, computed } from 'vue';
+import { onBeforeUnmount, ref, shallowRef, onMounted, onActivated, reactive, computed, nextTick } from 'vue';
+
+defineOptions({ name: 'ArticlePage' });
 import { useRoute } from 'vue-router';
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue';
 import { getAccountList } from '../../api/account';
@@ -406,6 +422,7 @@ import { ElMessage } from 'element-plus';
 
 // ----------------- 状态定义 -----------------
 const $route = useRoute();
+
 const leftTab = ref('articles'); // articles | news
 const leftLoading = ref(false);
 const articleList = ref<Article[]>([]);
@@ -416,6 +433,7 @@ const currentArticleId = ref<number | null>(null);
 const fetchedOriginalText = ref('');
 
 const editorRef = shallowRef();
+const editorKey = ref(1);
 const valueHtml = ref('');
 const showPreview = ref(false);
 const aiWriting = ref(false);
@@ -439,33 +457,16 @@ const form = reactive({
     tags: string;
     selectedTopic: string; // 已锁定的主话题
     publishType: string;
+    coverImage: string;
     isScheduled: boolean;
     scheduledTime: string;
-    selectedSkillId: string; // 新增：绑定的独立技能 ID
   }>
 });
-
-const availableSkills = ref<any[]>([]);
-
-// 自动为指定平台选择第一个匹配的独立技能 (Skill)
-const autoSelectSkillForPlatform = (platKey: string) => {
-  const match = availableSkills.value.find(s => s.platform === platKey);
-  if (match && form.platformSettings[platKey]) {
-    form.platformSettings[platKey].selectedSkillId = match.id;
-    console.log(`[FRONTEND] Auto-selected skill [${match.id}] for platform [${platKey}]`);
-  }
-};
 
 const platformAiLoading = reactive<Record<string, boolean>>({});
 const platformTopics = reactive<Record<string, any[]>>({}); // 存储各平台的本地话题/任务池
 const autoPrependTopic = ref(true); // 默认开启话题进正文逻辑
 
-// 自动化实时预览相关
-const automationActive = ref(false);
-const sessionId = ref<string | null>(null);
-const currentSnapshot = ref<string | null>(null);
-const autoTimer = ref<any>(null);
-const currentProcessingPlatform = ref<string | null>(null);
 const platformList = ref<Platform[]>([]);
 
 // 写作规范联动
@@ -522,16 +523,8 @@ const editorConfig = {
 
 // ----------------- 生命周期 -----------------
 onMounted(async () => {
-    // 1. 兼容旧版跳转逻辑
-    const pt = localStorage.getItem('pending_article_title');
-    const pc = localStorage.getItem('pending_article_content');
-    const pcover = localStorage.getItem('pending_article_cover');
-    const ptg = localStorage.getItem('pending_article_tags');
-    
-    if (pt) { form.title = pt; localStorage.removeItem('pending_article_title'); }
-    if (pc) { valueHtml.value = pc; localStorage.removeItem('pending_article_content'); }
-    if (pcover) { form.coverUrl = pcover; localStorage.removeItem('pending_article_cover'); }
-    // ptg (tags) will be handled via platform initialization if needed or just ignored since global tags are gone
+    // 处理跨页面跳转数据（首次加载 + keep-alive 复用共享逻辑）
+    checkPendingData();
 
     // 2. 处理来自“热点资讯”独立页面的透传数据
     const autoNewsData = localStorage.getItem('auto_create_news');
@@ -590,6 +583,10 @@ onMounted(async () => {
       platformList.value = allPlatforms;
       accountList.value = aRes || [];
       
+      // 默认选中启用配置平台下的所有账号
+      const platformIds = new Set(allPlatforms.map((p: Platform) => p.id));
+      form.selectedAccounts = (aRes || []).filter((a: Account) => platformIds.has(a.platformId)).map((a: Account) => a.id);
+      
       // 用户要求：内容创作中，只要在分发渠道中显示的（已过滤启用的）都是默认选中的
       if (allPlatforms.length > 0 && form.selectedPlatforms.length === 0) {
         form.selectedPlatforms = allPlatforms.map(p => p.platformKey);
@@ -601,12 +598,10 @@ onMounted(async () => {
               tags: '',
               selectedTopic: ['bjh', 'baijiahao'].includes(p.platformKey) ? '__DEFAULT__' : '', 
               publishType: 'news',
+              coverImage: '',
               isScheduled: false,
-              scheduledTime: '',
-              selectedSkillId: '' 
+              scheduledTime: ''
             };
-            // 尝试自动匹配独立代理
-            autoSelectSkillForPlatform(p.platformKey);
           }
         });
       }
@@ -624,21 +619,54 @@ onMounted(async () => {
           });
         }
       });
-
-      // 加载可用的独立技能列表
-      request.get('/automation/skills').then(res => {
-        console.log('>>> [FRONTEND] Fetched Skills:', res.data);
-        availableSkills.value = res.data || [];
-        // 获取到技能列表后，为当前已选中的平台再次尝试自动匹配
-        form.selectedPlatforms.forEach(platKey => {
-            autoSelectSkillForPlatform(platKey);
-        });
-      });
     } catch (e) {
       console.error('加载平台列表失败', e);
       platformList.value = [];
     }
 });
+
+// keep-alive 重新激活时，检查是否有新的跳转数据
+onActivated(() => {
+    checkPendingData();
+});
+
+// 抽取跨页面数据检查逻辑
+const checkPendingData = () => {
+    // 1. 兼容旧版跳转逻辑
+    const pt = localStorage.getItem('pending_article_title');
+    const pc = localStorage.getItem('pending_article_content');
+    const pcover = localStorage.getItem('pending_article_cover');
+    if (pt) { form.title = pt; localStorage.removeItem('pending_article_title'); }
+    if (pc) { valueHtml.value = pc; localStorage.removeItem('pending_article_content'); }
+    if (pcover) { form.coverUrl = pcover; localStorage.removeItem('pending_article_cover'); }
+
+    // 2. 处理来自"热点资讯"的一键创作
+    const autoNewsData = localStorage.getItem('auto_create_news');
+    if (autoNewsData) {
+      try {
+        const item = JSON.parse(autoNewsData) as HotNews;
+        selectedNews.value = item;
+        form.title = item.title;
+        leftTab.value = 'news';
+        localStorage.removeItem('auto_create_news');
+        setTimeout(() => handleAiWrite(), 500);
+      } catch (e) {
+        console.error('Failed to parse auto_create_news', e);
+      }
+    }
+    
+    // 3. 处理路由参数传递的 ID（从"我的发文"跳转编辑）
+    const queryId = $route.query.id;
+    if (queryId) {
+      const targetId = Number(queryId);
+      getArticle(targetId).then(found => {
+        if (found) {
+          handleLoadArticle(found);
+          ElMessage.info('已成功加载文稿草稿');
+        }
+      }).catch(e => console.warn('加载草稿失败', e));
+    }
+};
 
 onBeforeUnmount(() => {
     const editor = editorRef.value;
@@ -664,6 +692,23 @@ const loadAccounts = async () => {
 };
 
 const accountList = ref<Account[]>([]);
+
+function getAccountsForPlatform(plat: Platform): Account[] {
+  return accountList.value.filter((a: Account) => a.platformId === plat.id);
+}
+
+function isAccountSelected(accountId: number): boolean {
+  return form.selectedAccounts.includes(accountId);
+}
+
+function toggleAccountSelection(accountId: number) {
+  const idx = form.selectedAccounts.indexOf(accountId);
+  if (idx >= 0) {
+    form.selectedAccounts.splice(idx, 1);
+  } else {
+    form.selectedAccounts.push(accountId);
+  }
+}
 
 // 计算选中的账号名称，用于展示分发渠道
 const selectedAccountNames = computed(() => {
@@ -730,6 +775,8 @@ const handleLoadArticle = (item: Article) => {
 
 const handleCreated = (editor: any) => {
   editorRef.value = editor;
+  // 编辑器创建完成后，立即刷新图片列表
+  nextTick(() => refreshArticleImages());
 };
 
 const toggleAccount = (acc: any) => {
@@ -750,12 +797,10 @@ const togglePlatform = (plat: Platform) => {
       tags: '',
       selectedTopic: '', 
       publishType: 'news',
+      coverImage: '',
       isScheduled: false,
-      scheduledTime: '',
-      selectedSkillId: ''
+      scheduledTime: ''
     };
-    // 激活平台时自动选择对应的独立技能
-    autoSelectSkillForPlatform(key);
   } else {
     form.selectedPlatforms.splice(idx, 1);
     delete form.platformSettings[key];
@@ -764,6 +809,112 @@ const togglePlatform = (plat: Platform) => {
 
 const getAccountCount = (platformId: number) => {
   return accountList.value.filter(a => a.platformId === platformId).length;
+};
+
+// 辅助：从编辑器内部模型中提取所有图片 URL
+const articleImages = ref<string[]>([]);
+
+// 从 HTML 字符串中正则提取所有图片 URL（不依赖编辑器状态，避免 setHtml 后 valueHtml 被覆盖导致 0 张）
+function extractImageUrlsFromHtml(html: string): string[] {
+  if (!html || typeof html !== 'string') return [];
+  const allUrls = new Set<string>();
+  // 兼容 src="url"、src='url'、src = "url"，属性顺序任意
+  const reg = /<img[^>]+>/gi;
+  let match;
+  while ((match = reg.exec(html)) !== null) {
+    const srcMatch = match[0].match(/\ssrc\s*=\s*["']([^"']+)["']/i);
+    if (srcMatch && srcMatch[1] && !srcMatch[1].includes('data:image/svg+xml')) {
+      allUrls.add(srcMatch[1].trim());
+    }
+  }
+  return Array.from(allUrls);
+}
+
+// 辅助：当图片列表变化时，同步保证所有选中平台的 coverImage 始终有效
+const syncCoverImages = (imgs: string[]) => {
+  form.selectedPlatforms.forEach((platKey: string) => {
+    const settings = (form.platformSettings as any)[platKey];
+    if (settings) {
+      // 如果当前没有封面图，或者当前封面图不在新的图片列表中，强制重置为新的第一张
+      if (!settings.coverImage || !imgs.includes(settings.coverImage)) {
+        settings.coverImage = imgs.length > 0 ? imgs[0] : '';
+      }
+    }
+  });
+};
+
+// 刷新图片列表：直接从 HTML 正则提取，不依赖编辑器 API
+const refreshArticleImages = (html?: string) => {
+  const source = html || valueHtml.value;
+  const imgs = extractImageUrlsFromHtml(source);
+  articleImages.value = imgs;
+  syncCoverImages(imgs);
+};
+
+// 编辑器内容变化时防抖刷新图片列表
+let editorChangeTimer: ReturnType<typeof setTimeout> | null = null;
+const handleEditorChange = () => {
+  if (editorChangeTimer) clearTimeout(editorChangeTimer);
+  editorChangeTimer = setTimeout(() => {
+    refreshArticleImages();
+  }, 500);
+};
+
+const forceUpdateImages = () => {
+  // 直接从当前 HTML 提取图片，不依赖编辑器 API
+  const imgs = extractImageUrlsFromHtml(valueHtml.value);
+  articleImages.value = imgs;
+  syncCoverImages(imgs);
+  if (imgs.length > 0) {
+    ElMessage.success(`已成功提取 ${imgs.length} 张图片`);
+  } else {
+    ElMessage.warning('未能从正文中检测到图片，请确认正文已插入图片');
+  }
+};
+
+// 辅助：提取 HTML 中的第一张图片 URL (兼容旧逻辑)
+const extractFirstImage = (html: string) => {
+  if (!html) return '';
+  const reg = /<img\s+[^>]*?src=["']([^"']+)["']/i;
+  const match = html.match(reg);
+  return match ? match[1] : '';
+};
+
+// 获取当前平台选中的封面，如果没有则默认第一张
+const getCurrentCover = (platKey: string) => {
+  const imgs = articleImages.value;
+  if (imgs.length === 0) return '';
+  const settings = (form.platformSettings as any)[platKey];
+  if (!settings.coverImage || !imgs.includes(settings.coverImage)) {
+    return imgs[0];
+  }
+  return settings.coverImage;
+};
+
+// 封面导航
+const getCoverIndexLabel = (platKey: string) => {
+  const imgs = articleImages.value;
+  const current = getCurrentCover(platKey);
+  const idx = imgs.indexOf(current);
+  return `${idx + 1} / ${imgs.length}`;
+};
+
+const nextCover = (platKey: string) => {
+  const imgs = articleImages.value;
+  if (imgs.length <= 1) return;
+  const current = getCurrentCover(platKey);
+  let idx = imgs.indexOf(current);
+  idx = (idx + 1) % imgs.length;
+  (form.platformSettings as any)[platKey].coverImage = imgs[idx];
+};
+
+const prevCover = (platKey: string) => {
+  const imgs = articleImages.value;
+  if (imgs.length <= 1) return;
+  const current = getCurrentCover(platKey);
+  let idx = imgs.indexOf(current);
+  idx = (idx - 1 + imgs.length) % imgs.length;
+  (form.platformSettings as any)[platKey].coverImage = imgs[idx];
 };
 
 const getPlatformIcon = (platformId: number) => {
@@ -797,9 +948,14 @@ const handleAiWrite = async () => {
     
     fetchedOriginalText.value = originalText;
 
-    // 3. 提交给 AI 进行深度改写，携带选中的 specId
+    // 3. 提交给 AI 进行深度改写，携带选中的撰稿风格 specId（后端按此提示词生成）
     const res = await generateArticle(selectedNews.value.title, originalText, selectedSpecId.value);
     
+    if (res?.content == null || (typeof res.content === 'string' && res.content.trim() === '')) {
+      ElMessage.error('生成结果为空，请检查 AI 配置或稍后重试');
+      return;
+    }
+
     // 4. 更新对比弹窗内容 (后台保留供手动查看)
     originalContent.value = `<h3>${selectedNews.value.title}</h3>` + 
                             `<div class="origin-meta">来源：${selectedNews.value.source} | 链接：${selectedNews.value.url}</div>` +
@@ -808,10 +964,10 @@ const handleAiWrite = async () => {
     polishedContent.value = res.content;
     polishMode.value = 'rewrite';
 
-    // === 核心改进：直接应用采纳 ===
-    await updateEditorContent(res.content, true);
+    // === 直接应用采纳到编辑器 ===
+    await updateEditorContent(res.content, true, res.images);
     
-    ElMessage.success('正文已根据原文深度生成，并已自动采纳！');
+    ElMessage.success('正文已按所选撰稿风格生成，并已自动采纳');
   } catch (err) {
     ElMessage.error('AI 改写失败，请检查网络或 AI 配置');
   } finally {
@@ -820,7 +976,8 @@ const handleAiWrite = async () => {
 };
 
 // 抽取公共的内容更新逻辑：支持标题提取、自动辅助信息生成、以及 AI 图片重绘
-const updateEditorContent = async (newHtml: string, isRewrite = false) => {
+const updateEditorContent = async (newHtml: string, isRewrite = false, incomingImages?: string[]) => {
+  if (newHtml == null || (typeof newHtml === 'string' && newHtml.trim() === '')) return;
   let finalContent = newHtml;
   
   // 1. 尝试从正文中提取并移除标题 (h1-h3)
@@ -868,8 +1025,24 @@ const updateEditorContent = async (newHtml: string, isRewrite = false) => {
     }
   }
 
-  // 2. 应用内容 (解耦后不再在此处理话题注入，改为发布时动态注入)
+  // 2. 应用内容：直接写回 ref，并且强制组件重新挂载，彻底绕开 WangEditor 内置的 Slate 更新引擎以防止 __vnode 报错
   valueHtml.value = finalContent;
+  editorKey.value++; 
+  await nextTick();
+
+  // 直接使用后端传来的图片URL，如果有的话优先使用后端解析的，避免前端正则提取潜在遗漏
+  const imgs = (incomingImages && incomingImages.length > 0) ? incomingImages : extractImageUrlsFromHtml(finalContent);
+  articleImages.value = imgs;
+  // 第一张自动设为各平台封面
+  if (imgs.length > 0) {
+    const firstImg = imgs[0];
+    form.selectedPlatforms.forEach((platKey: string) => {
+      const settings = (form.platformSettings as any)[platKey];
+      if (settings && !settings.coverImage) {
+        settings.coverImage = firstImg;
+      }
+    });
+  }
 
   // 3. 如果是深度改写，自动触发摘要和标签提取
   if (isRewrite) {
@@ -939,18 +1112,20 @@ const handlePlatformAiTags = async (platKey: string) => {
 
 const handleTopicClick = (platKey: string, topic: string) => {
   if (!form.platformSettings[platKey]) {
-    form.platformSettings[platKey] = {
+    (form.platformSettings as any)[platKey] = {
       category: '',
       tags: '',
       selectedTopic: '',
       publishType: 'article',
+      coverImage: '',
       isScheduled: false,
-      scheduledTime: '',
-      selectedSkillId: ''
+      scheduledTime: ''
     };
   }
   
-  const settings = form.platformSettings[platKey];
+  const settings = (form.platformSettings as any)[platKey];
+  if (!settings) return; // Type guard
+
   // 切换选中状态：如果点的是已选中的，则取消锁定；否则锁定该话题
   if (settings.selectedTopic === topic) {
      settings.selectedTopic = '';
@@ -959,7 +1134,7 @@ const handleTopicClick = (platKey: string, topic: string) => {
      settings.selectedTopic = topic;
      // 同时将其加入标签列表(去重)
      const normalized = topic.replace(/#/g, '');
-     const tagList = (settings.tags || '').split(/[,，]/).map(t => t.trim()).filter(t => t);
+     const tagList = (settings.tags || '').split(/[,，]/).map((t: string) => t.trim()).filter((t: string) => t);
      if (!tagList.includes(normalized)) {
         tagList.push(normalized);
         settings.tags = tagList.join(', ');
@@ -1018,12 +1193,14 @@ const handleAiPolish = async () => {
   aiWriting.value = true;
   try {
     const res = await polishArticle(valueHtml.value, selectedPolishSpecId.value);
+    if (res?.content == null || (typeof res.content === 'string' && res.content.trim() === '')) {
+      ElMessage.error('润色结果为空，请检查 AI 配置或稍后重试');
+      return;
+    }
     originalContent.value = valueHtml.value;
     polishedContent.value = res.content;
     polishMode.value = 'polish';
-    
-    // 直接采纳
-    await updateEditorContent(res.content, false);
+    await updateEditorContent(res.content, false, res.images);
     ElMessage.success('文章润色完成，已自动采纳修订版本');
   } catch (err) {
     ElMessage.error('润色失败');
@@ -1040,8 +1217,12 @@ const handleReCompare = () => {
      : `<h3>${selectedNews.value.title}</h3><p>${selectedNews.value.summary}</p><p>来源：${selectedNews.value.source}</p>`;
   
   originalContent.value = originalHtml;
-  polishedContent.value = valueHtml.value; // 当前编辑器内容
-  polishMode.value = 'rewrite'; // 使用改写模式的 Label
+  // 右侧「AI 深度改写版」：优先用当前编辑器内容；若编辑器为空但之前已生成过（polishedContent 有值），保留上次结果，避免对比弹窗右侧空白
+  if (valueHtml.value && valueHtml.value.trim()) {
+    polishedContent.value = valueHtml.value;
+  }
+  // 若 polishedContent 仍为空且无历史改写结果，保持原值，至少左侧原文会显示
+  polishMode.value = 'rewrite';
   showPolishDialog.value = true;
 };
 
@@ -1102,6 +1283,7 @@ const handleSave = async (status: number) => {
       title: form.title,
       summary: form.summary,
       content: valueHtml.value,
+      coverImage: extractFirstImage(valueHtml.value), // 提取封面 (第一张)
       category: settings?.category || '',
       tags: settings?.tags || '',
       platformSettings: JSON.stringify(form.platformSettings),
@@ -1122,186 +1304,146 @@ const handleSave = async (status: number) => {
 };
 
 const handlePublish = async () => {
-  if (form.selectedPlatforms.length === 0) return ElMessage.warning('请选择至少一个发布平台');
+  if (form.selectedAccounts.length === 0) return ElMessage.warning('请选择至少一个发布账号');
   
   publishing.value = true;
-  automationActive.value = true;
   
   try {
     const article = await handleSave(1);
     if (!article) return;
 
-    // 依次处理选中的平台
-    for (const platformKey of form.selectedPlatforms) {
-      currentProcessingPlatform.value = platformKey;
-      const settings = form.platformSettings[platformKey];
-      if (!settings) continue;
-      
-      const platformObj = platformList.value.find(p => p.platformKey === platformKey);
-      if (!platformObj) continue;
-      
-      const account = accountList.value.find(a => a.platformId === platformObj.id);
-
-      ElMessage.info(`正在同步至 ${platformObj.platformName}...`);
-
-      // === 发布前注入：将该平台锁定的主话题注入到正文开头 ===
-      let contentToPublish = valueHtml.value;
-      if (settings.selectedTopic) {
-        // 只有非百家号平台才在这里进行 HTML 强注，因为百家号我们将通过 Agent 模拟打字实现“真话题”
-        if (!['bjh', 'baijiahao'].includes(platformKey)) {
-          const topicTag = `#${settings.selectedTopic.replace(/#/g, '')}#`;
-          contentToPublish = `<p><span style="color: #1890ff; font-weight: bold; background: #e6f7ff; padding: 2px 8px; border-radius: 4px; border: 1px solid #91d5ff;">${topicTag}</span></p>\n` + contentToPublish;
-          ElMessage.info(`针对 ${platformObj.platformName} 已自动注入主话题: ${topicTag}`);
-        } else {
-          // 百家号仅在日志提示，实际逻辑交给后端的 Python Agent 处理交互
-          ElMessage.info(`百家号将通过 Agent 模拟键入实现原生话题：#${settings.selectedTopic}#`);
-        }
-      }
-
-      // === 核心逻辑：优先检查是否选择了“独立代理 (Independent Skill Agent)” ===
-      if (settings.selectedSkillId) {
-        try {
-          ElMessage.info(`正在通过独立代理 [${settings.selectedSkillId}] 发布至 ${platformObj.platformName}...`);
-          const skillRes = await request.post<any>(`/automation/skills/execute/${settings.selectedSkillId}`, {
-            title: form.title,
-            htmlContent: contentToPublish,
-            category: settings.category,
-            tags: settings.tags,
-            platform: platformKey,
-            accountId: account?.id, // 传递账号 ID 以便 Agent 加载对应 Session
-            cookieJson: account?.cookieData || '', // 传递历史 Cookie 供 Agent 注入
-            draft: false,
-            platformSettings: settings
-          });
-          
-          if (skillRes.code === 200) {
-            ElMessage.success(`${platformObj.platformName} 发布任务已由独立代理成功接管`);
-            continue; // 跳过后续通用自动化逻辑
-          } else {
-            ElMessage.error(`${platformObj.platformName} 代理执行失败: ${skillRes.msg}`);
-            // 失败后不再回退到通用逻辑，避免环境冲突
-            continue;
-          }
-        } catch (err) {
-          console.error('独立代理调用异常', err);
-          continue;
-        }
-      }
-
-      // === 旧版百家号专有 Skill (保留作为备选) ===
-      if (['bjh', 'baijiahao'].includes(platformKey) && settings.publishType === 'news') {
-        try {
-          const skillRes = await request.post<any>('/automation/publish/baijiahao', {
-            title: form.title,
-            htmlContent: contentToPublish,
-            category: settings.category,
-            cookieJson: account?.cookieData || '',
-            draft: false
-          });
-          
-          if (skillRes.code === 200) {
-            ElMessage.success(`${platformObj.platformName} 发布流程已通过内置 Skill 启动`);
-            continue; 
-          } else {
-            ElMessage.error(`${platformObj.platformName} 内置 Skill 执行失败: ${skillRes.msg}`);
-            continue; 
-          }
-        } catch (skillErr) {
-          console.error('内置 Skill API 调用异常', skillErr);
-          continue;
-        }
-      }
-
-      // === 其他平台：通用自动化流程 ===
-      let targetUrl = getPlatformEditorUrl(platformKey, settings.publishType);
-      const startRes = await request.post<any>('/automation/start', {
-        url: targetUrl,
-        cookieJson: account?.cookieData || ''
-      });
-
-      if (startRes.code === 200) {
-        if (autoTimer.value) clearInterval(autoTimer.value);
-        
-        const oldSessionId = sessionId.value;
-        sessionId.value = startRes.data;
-        startAutomationPolling();
-        
-        if (oldSessionId) {
-          request.delete(`/automation/session/${oldSessionId}`).catch(() => {});
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        
-        const selectors = getPlatformSelectors(platformKey);
-        await request.post('/automation/action', {
-          sessionId: sessionId.value,
-          type: 'fill',
-          selector: selectors.title,
-          value: form.title
-        });
-        
-        await request.post('/automation/action', {
-          sessionId: sessionId.value,
-          type: 'fill',
-          selector: selectors.content,
-          value: contentToPublish
-        });
-
-        ElMessage.success(`${platformObj.platformName} 同步填充完成`);
-        await new Promise(resolve => setTimeout(resolve, 3000));
-      }
-    }
+    ElMessage.info('正在提交发布任务至后台队列...');
     
-    ElMessage.success('选定平台的内容同步已全部完成！');
+    // 对每个选中平台的额外配置（其实直接随文章平台设置入库，后端会自动处理）
+    const res = await submitPublishTask({
+        articleId: article.id,
+        accountIds: form.selectedAccounts,
+        scheduledTime: undefined
+    });
+    
+    if (res && res.length > 0) {
+        ElMessage.success(`已成功划拨 ${res.length} 个发布任务至后台队列，将按账号排队全自动异步发布`);
+    } else {
+        ElMessage.warning('提交发布任务记录为空');
+    }
   } catch (e) {
-    ElMessage.error('自动化分发过程中出现异常');
+    ElMessage.error('自动化分发提交过程中出现异常');
   } finally {
     publishing.value = false;
-    // 保持 automationActive 为 true 以便用户查看最后的结果，或者可以提供关闭按钮
   }
-};
-
-const getPlatformEditorUrl = (key: string, type: string) => {
-  if (key === 'baijiahao') {
-    switch (type) {
-      case 'video': return 'https://baijiahao.baidu.com/builder/rc/edit?type=videoV2&is_from_cms=1';
-      case 'dynamic': return 'https://baijiahao.baidu.com/builder/rc/edit?type=events&is_from_cms=1';
-      default: return 'https://baijiahao.baidu.com/builder/rc/edit?type=news&is_from_cms=1';
-    }
-  }
-  
-  switch (key) {
-    case 'sina': return 'https://mp.sina.com.cn/main/editor';
-    case 'sohu': return 'https://mp.sohu.com/mpfe/v3/main/news/addarticle';
-    case 'toutiao': return 'https://mp.toutiao.com/profile_v4/graphic/publish';
-    case 'netease': return 'https://mp.163.com/v2/index.html#/article/editor/news';
-    case 'dayuhao': return 'https://mp.dayu.com/dashboard/article/write';
-    case 'qiehao': return 'https://om.qq.com/article/index';
-    default: return 'https://www.google.com';
-  }
-};
-
-const getPlatformSelectors = (key: string) => {
-  // 基础选择器配置，实际应用中建议存储在数据库
-  return {
-    title: 'input[placeholder*="标题"]',
-    content: '.w-e-text-container [contenteditable="true"]'
-  };
-};
-
-const startAutomationPolling = () => {
-  if (autoTimer.value) clearInterval(autoTimer.value);
-  autoTimer.value = setInterval(async () => {
-    if (!sessionId.value) return;
-    try {
-      const res = await request.get<any>(`/automation/snapshot/${sessionId.value}`);
-      if (res.code === 200) currentSnapshot.value = res.data;
-    } catch (e) {}
-  }, 1000);
 };
 </script>
 
 <style scoped>
+.cover-preview-wrapper {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.span-2-rows {
+  grid-row: span 2;
+}
+.cover-preview {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.cover-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cover-badge {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  background: rgba(59, 130, 246, 0.9);
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
+  z-index: 2;
+}
+.cover-nav {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  z-index: 2;
+}
+.nav-btn {
+  background: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 12px;
+  transition: all 0.2s;
+  border-radius: 4px;
+}
+.nav-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.nav-info {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 600;
+}
+.cover-empty {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.account-select-block {
+  background: rgba(0, 0, 0, 0.15);
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  margin-bottom: 12px;
+}
+.no-account-hint {
+  font-size: 12px;
+  color: #ff4d4f;
+  margin-top: 5px;
+}
+.account-check-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+.account-check-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #e2e8f0;
+  cursor: pointer;
+}
+.account-check-item input[type="checkbox"] {
+  accent-color: #3b82f6;
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
 .content-hub-container {
   height: calc(100vh - 80px); /* 减去顶部边距 */
   margin: -20px;

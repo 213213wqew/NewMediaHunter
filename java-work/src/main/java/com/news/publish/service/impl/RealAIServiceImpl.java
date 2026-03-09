@@ -315,7 +315,7 @@ public class RealAIServiceImpl implements AIService {
             "1. 标题保持：尽量保留提供的【文章主题】核心语意作为标题；\n" +
             "2. 严禁原文照抄正文，必须重新组织语言逻辑，通过不同的切入点进行叙述；\n" +
             "3. 严格紧凑的排版：只允许使用 <h2> 和 <p> 标签。标签之间绝对不允许有任何换行符 (\\n) 或空行。必须像紧连着的代码一样输出，例如：<p>段落一</p><h2>小标题</h2><p>段落二</p>；\n" +
-            "4. 精简内容：总字数控制在 260 到 350 字左右，语言要干练，突出核心要点即可；\n" +
+            "4. 精简内容：正文严格控制在 250～300 字，语言干练，突出核心要点，不凑字不注水；\n" +
             "5. **图片插入/配图准则（最高优先级）**：\n" +
             "   - **优先使用原图**：素材中包含 `【图片素材N 开始】URL【图片素材N 结束】`。你**必须**将其转换为标准 HTML：`<img src=\"URL\" />` 插入合适位置。**注意：对于此类原图，严禁添加 data-ai-rebuild 属性。**\n" +
             "   - **AI 补位配图**：如果你认为素材原图质量太差、有严重水印，或者素材中根本没有图片，你必须自拟 1 张配图描述，并使用占位格式：\n" +
@@ -324,6 +324,16 @@ public class RealAIServiceImpl implements AIService {
             "6. 只返回干净的纯 HTML 字符串，不要有 markdown 代码块标记，不要加任何前导或后缀文字。";
 
         String systemPrompt = resolveSystemPrompt("GENERATION", specId, defaultSystem);
+        
+        // 强制叠加 HTML 与排版要求，防止用户的纯文本设定导致 WangEditor 崩溃/漏词
+        if (!systemPrompt.contains("<p>")) {
+            systemPrompt += "\n\n【系统强制返回格式（最高优先级）】：\n" +
+                "1. 严格紧凑的排版：你的输出只能且必须是合法的 HTML 字符串（仅限 <h2> 和 <p> 以及 <img> 标签），绝对不要有任何 markdown 代码块标记 (如 ```html)。\n" +
+                "2. 绝对不能输出纯文本段落！所有文本必须包裹在 <p> 标签内。\n" +
+                "3. 图片插入规则：素材中的 `【图片素材...】...` 必须转成 `<img src=\"URL\" />` 排版。如果素材无图或质量差，插入一张 AI 占位图：`<img data-ai-rebuild=\"true\" data-prompt=\"英文场景描述\" src=\"URL\" />`。\n" +
+                "4. 全文至少存在一张图片。\n" +
+                "5. 段落排版外观必须干净清爽：不要在生成的 HTML 字符串里加入多余的换行符 (\\n)；所有段落都用 <p>包裹，每段之间无需空行。";
+        }
         
         String res = call(
             systemPrompt,
@@ -357,6 +367,21 @@ public class RealAIServiceImpl implements AIService {
             } else {
                 res = fallbackImg + res;
             }
+        }
+
+        // --- 后端强制去空行与无用占位标签清理 ---
+        if (res != null) {
+            // 清理完全没有任何可见字符的空段落 (包括只带有空格的)
+            res = res.replaceAll("(?i)<p>(?:\\s|&nbsp;|<br\\s*/?>|　)*</p>", "");
+            // 循环多清理几次，防止嵌套出现的空段落
+            for (int i = 0; i < 3; i++) {
+                res = res.replaceAll("(?i)<p>(?:\\s|&nbsp;|<br\\s*/?>|　)*</p>", "");
+            }
+            // 清除所有的零宽字符 (Zero-width space)，WangEditor 内部会因为它们生成空文本节点
+            res = res.replaceAll("[\\uFEFF\\u200B]", "");
+            // 清除两个 HTML 标签之间的所有空白或换行符，变成紧紧相邻 (即 </p>\n<p> 变成 </p><p>)
+            res = res.replaceAll(">\\s+<", "><");
+            res = res.trim();
         }
 
         return res;
@@ -465,7 +490,24 @@ public class RealAIServiceImpl implements AIService {
             "3. 保持原有 HTML 标签结构不变；" +
             "4. 只返回润色后的完整 HTML 内容，不要加任何说明。";
             
-        return call(resolveSystemPrompt("POLISH", specId, defaultSystem), content);
+        String systemPrompt = resolveSystemPrompt("POLISH", specId, defaultSystem);
+        if (!systemPrompt.contains("<p>") && !systemPrompt.contains("HTML")) {
+            systemPrompt += "\n\n【系统强制约束】\n" +
+                "必须严格保持原有 HTML 标签（如 <p>、<h2>、<img>）不变，绝对不能破坏原有的排版，且只返回合法 HTML 字符串。";
+        }
+        String res = call(systemPrompt, content);
+        if (res != null) {
+            // 清理完全没有任何可见字符的空段落 (包括只带有空格的)
+            res = res.replaceAll("(?i)<p>(?:\\s|&nbsp;|<br\\s*/?>|　)*</p>", "");
+            for (int i = 0; i < 3; i++) {
+                res = res.replaceAll("(?i)<p>(?:\\s|&nbsp;|<br\\s*/?>|　)*</p>", "");
+            }
+            // 深度清理
+            res = res.replaceAll("[\\uFEFF\\u200B]", "");
+            res = res.replaceAll(">\\s+<", "><");
+            res = res.trim();
+        }
+        return res;
     }
 
     @Override

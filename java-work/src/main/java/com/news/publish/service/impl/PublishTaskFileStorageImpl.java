@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +35,7 @@ public class PublishTaskFileStorageImpl implements PublishTaskFileStorage {
 
     private Path filePath;
     private final AtomicLong nextIdHolder = new AtomicLong(1L);
+    private final Object fileLock = new Object();
 
     @PostConstruct
     public void init() {
@@ -54,34 +56,45 @@ public class PublishTaskFileStorageImpl implements PublishTaskFileStorage {
     }
 
     private TasksHolder load() {
-        if (filePath == null || !Files.isRegularFile(filePath)) {
-            TasksHolder h = new TasksHolder();
-            h.nextId = nextIdHolder.get();
-            return h;
-        }
-        try {
-            String json = Files.readString(filePath);
-            TasksHolder h = objectMapper.readValue(json, TasksHolder.class);
-            if (h.list == null) h.list = new ArrayList<>();
-            nextIdHolder.set(h.nextId);
-            return h;
-        } catch (Exception e) {
-            log.warn("读取发布任务文件失败，使用空列表: {}", e.getMessage());
-            TasksHolder h = new TasksHolder();
-            h.nextId = nextIdHolder.get();
-            h.list = new ArrayList<>();
-            return h;
+        synchronized (fileLock) {
+            if (filePath == null || !Files.isRegularFile(filePath)) {
+                TasksHolder h = new TasksHolder();
+                h.nextId = nextIdHolder.get();
+                return h;
+            }
+            try {
+                String json = Files.readString(filePath);
+                TasksHolder h = objectMapper.readValue(json, TasksHolder.class);
+                if (h.list == null) h.list = new ArrayList<>();
+                nextIdHolder.set(h.nextId);
+                return h;
+            } catch (Exception e) {
+                log.warn("读取发布任务文件失败，使用空列表: {}", e.getMessage());
+                TasksHolder h = new TasksHolder();
+                h.nextId = nextIdHolder.get();
+                h.list = new ArrayList<>();
+                return h;
+            }
         }
     }
 
     private void save(TasksHolder holder) {
         if (filePath == null) return;
-        try {
+        synchronized (fileLock) {
             holder.nextId = nextIdHolder.get();
-            objectMapper.writerWithDefaultPrettyPrinter().writeValue(filePath.toFile(), holder);
-        } catch (IOException e) {
-            log.error("保存发布任务文件失败", e);
-            throw new RuntimeException("保存发布任务失败: " + e.getMessage());
+            Path tmpPath = filePath.resolveSibling(filePath.getFileName() + ".tmp");
+            try {
+                objectMapper.writerWithDefaultPrettyPrinter().writeValue(tmpPath.toFile(), holder);
+                try {
+                    Files.move(tmpPath, filePath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+                } catch (IOException e) {
+                    Files.move(tmpPath, filePath, StandardCopyOption.REPLACE_EXISTING);
+                }
+            } catch (IOException e) {
+                try { Files.deleteIfExists(tmpPath); } catch (IOException ignored) {}
+                log.error("保存发布任务文件失败", e);
+                throw new RuntimeException("保存发布任务失败: " + e.getMessage());
+            }
         }
     }
 
