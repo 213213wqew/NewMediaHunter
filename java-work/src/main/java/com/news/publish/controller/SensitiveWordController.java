@@ -1,7 +1,6 @@
 package com.news.publish.controller;
 
 import com.news.publish.model.entity.SensitiveWord;
-import com.news.publish.repository.SensitiveWordRepository;
 import com.news.publish.service.ComplianceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -13,24 +12,20 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SensitiveWordController {
 
-    private final SensitiveWordRepository repository;
     private final ComplianceService complianceService;
 
     @GetMapping
     public List<SensitiveWord> getAll() {
-        return repository.findAll();
+        return complianceService.getAllWords();
     }
 
     @PostMapping
     public SensitiveWord add(@RequestBody SensitiveWord word) {
-        SensitiveWord saved = repository.save(word);
-        complianceService.refreshWords(); // 刷新缓存
-        return saved;
+        return complianceService.addWord(word);
     }
 
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {
-        repository.deleteById(id);
-        complianceService.refreshWords(); // 刷新缓存
+        complianceService.deleteWord(id);
     }
 }

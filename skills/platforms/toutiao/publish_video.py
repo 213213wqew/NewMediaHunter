@@ -13,6 +13,7 @@ if _ROOT not in sys.path:
 
 from core.inject import inject_cookies
 from core.window_layout import get_window_layout
+from core.browser import KEEP_AWAKE_ARGS, inject_keep_awake
 from platforms.toutiao.config import VIDEO_UPLOAD_URL, LOGIN_WAIT_TIMEOUT_MS
 
 
@@ -54,10 +55,11 @@ def run(params: dict, session_dir: str, cookie_json_str: str) -> dict:
             headless=False,
             slow_mo=500,
             no_viewport=True,
-            args=[f"--window-size={w},{h}", f"--window-position={x},{y}"],
+            args=[f"--window-size={w},{h}", f"--window-position={x},{y}"] + KEEP_AWAKE_ARGS,
         )
         page = context.new_page()
         try:
+            inject_keep_awake(page)
             inject_cookies(context, cookie_json_str)
             page.goto(VIDEO_UPLOAD_URL, timeout=60000)
 

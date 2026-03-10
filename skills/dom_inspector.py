@@ -1,7 +1,14 @@
 import os
 import json
+import sys
 import time
 from playwright.sync_api import sync_playwright
+
+_skills_root = os.path.dirname(os.path.abspath(__file__))
+if _skills_root not in sys.path:
+    sys.path.insert(0, _skills_root)
+
+from core.browser import KEEP_AWAKE_ARGS
 
 def inspect_dom():
     session_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sessions", "default_acc")
@@ -11,7 +18,7 @@ def inspect_dom():
         context = p.chromium.launch_persistent_context(
             user_data_dir=session_dir,
             headless=True,
-            args=['--start-maximized']
+            args=['--start-maximized'] + KEEP_AWAKE_ARGS
         )
         page = context.new_page()
         try:

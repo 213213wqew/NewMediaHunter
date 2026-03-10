@@ -14,6 +14,7 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 from core.inject import inject_cookies
+from core.browser import KEEP_AWAKE_ARGS, inject_keep_awake
 from platforms.baijiahao.config import PUBLISH_URL, LOGIN_WAIT_TIMEOUT_MS
 
 try:
@@ -97,10 +98,11 @@ def run(params: dict, session_dir: str, cookie_json_str: str) -> dict:
             user_data_dir=session_dir,
             headless=False,
             slow_mo=500,
-            args=["--start-maximized"],
+            args=["--start-maximized"] + KEEP_AWAKE_ARGS,
         )
         page = context.new_page()
         try:
+            inject_keep_awake(page)
             inject_cookies(context, cookie_json_str)
             page.goto(PUBLISH_URL, timeout=60000)
             if "login" in page.url or page.locator("text='登录'").count() > 0:

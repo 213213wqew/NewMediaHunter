@@ -85,9 +85,14 @@
       <div class="form-container single-col">
         <div class="form-group">
           <label class="form-label">选择平台</label>
-          <select v-model="bindForm.platformKey" class="form-input">
-            <option v-for="p in bindPlatforms" :key="p.id" :value="p.platformKey">{{ p.platformName }}</option>
-          </select>
+          <el-select v-model="bindForm.platformKey" placeholder="请选择发布平台" class="custom-select" effect="dark" :teleported="false">
+            <el-option
+              v-for="p in bindPlatforms"
+              :key="p.id"
+              :label="p.platformName"
+              :value="p.platformKey"
+            />
+          </el-select>
         </div>
         <div class="form-group">
           <label class="form-label">账号名称 <span class="required-hint">（必填，请自定义输入）</span></label>
@@ -107,7 +112,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { getAccountList, getAccountStats, refreshAccountStats, bindStart, deleteAccount, type AccountStats } from '../../api/account';
 import { getPlatformList } from '../../api/platform';
 import type { Account, Platform } from '../../types';
@@ -258,13 +263,26 @@ const handleStartBind = async () => {
 };
 
 const handleDelete = async (id: number) => {
-  if (!confirm('确定要解绑该账号吗？')) return;
   try {
+    await ElMessageBox.confirm(
+      '确定要解绑该账号吗？解绑后相关的发布凭证将被清除。',
+      '安全提示',
+      {
+        confirmButtonText: '确定解绑',
+        cancelButtonText: '取消',
+        type: 'warning',
+        customClass: 'custom-message-box'
+      }
+    );
+    
     await deleteAccount(id);
     await loadData();
     await loadStats();
+    ElMessage.success('账号已成功解绑');
   } catch (err) {
-    ElMessage.error('删除失败');
+    if (err !== 'cancel') {
+      ElMessage.error('删除失败');
+    }
   }
 };
 </script>
@@ -331,5 +349,43 @@ const handleDelete = async (id: number) => {
 .btn-secondary:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.12);
   border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Element Plus Select Override */
+:deep(.custom-select) {
+  width: 100%;
+}
+:deep(.custom-select .el-input__wrapper) {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  box-shadow: 0 0 0 1px var(--border-color) inset !important;
+  border-radius: 8px;
+  padding: 6px 12px;
+}
+:deep(.custom-select .el-input__inner) {
+  color: var(--text-primary) !important;
+  height: 38px;
+}
+:deep(.custom-select .el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px var(--accent-blue) inset !important;
+}
+
+/* 下拉面板样式 */
+:deep(.el-select__popper) {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
+}
+:deep(.el-select-dropdown__item) {
+  color: var(--text-secondary) !important;
+}
+:deep(.el-select-dropdown__item.hover), 
+:deep(.el-select-dropdown__item:hover) {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: var(--text-primary) !important;
+}
+:deep(.el-select-dropdown__item.selected) {
+  background-color: rgba(79, 142, 247, 0.2) !important;
+  color: var(--accent-blue) !important;
+  font-weight: 600;
 }
 </style>

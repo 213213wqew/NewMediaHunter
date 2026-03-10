@@ -10,6 +10,13 @@ if _shared_path not in sys.path:
     sys.path.insert(0, _shared_path)
 from ai_bridge import ask_ai
 
+# 确保能导入 core 模块
+_skills_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _skills_root not in sys.path:
+    sys.path.insert(0, _skills_root)
+
+from core.browser import KEEP_AWAKE_ARGS, inject_keep_awake
+
 def smart_action(page, action_name, exact_text):
     """带 AI 自愈能力的点击动作"""
     try:
@@ -84,10 +91,11 @@ def execute(params, session_dir):
             user_data_dir=session_dir,
             headless=False,
             slow_mo=500,
-            args=['--start-maximized']
+            args=['--start-maximized'] + KEEP_AWAKE_ARGS
         )
         
         page = context.new_page()
+        inject_keep_awake(page)
         try:
             print(f"DEBUG: 访问发布页面: {publish_url}")
             

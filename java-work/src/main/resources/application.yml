@@ -1,17 +1,7 @@
 spring:
-  datasource:
-    url: jdbc:mysql://localhost:3306/publish_center?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-    username: root
-    password: 5VhVcuL&N#VP  # 请根据您的 MySQL 密码修改
-    driver-class-name: com.mysql.cj.jdbc.Driver
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: false
-    properties:
-      hibernate:
-        format_sql: false
-        dialect: org.hibernate.dialect.MySQL8Dialect
+  # datasource: 已被移除，彻底断开 MySQL
+  # jpa: 已被移除
+
 
 server:
   port: 8080

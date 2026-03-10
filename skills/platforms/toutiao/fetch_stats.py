@@ -13,7 +13,7 @@ _ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", ".."))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-from core.browser import get_persistent_context
+from core.browser import get_persistent_context, KEEP_AWAKE_ARGS, inject_keep_awake
 from core.inject import inject_cookies
 from platforms.toutiao.config import LOGIN_WAIT_TIMEOUT_MS
 
@@ -34,10 +34,11 @@ def run(session_dir: str, cookie_json_str: str, params: dict = None) -> dict:
             user_data_dir=session_dir,
             headless=headless,
             slow_mo=100 if headless else 300,
-            args=["--start-maximized"] if not headless else ["--no-sandbox", "--disable-dev-shm-usage"],
+            args=(["--start-maximized"] if not headless else ["--no-sandbox", "--disable-dev-shm-usage"]) + KEEP_AWAKE_ARGS,
         )
         page = context.new_page()
         try:
+            inject_keep_awake(page)
             if cookie_json_str and cookie_json_str.strip():
                 inject_cookies(context, cookie_json_str)
             page.goto(DASHBOARD_URL, timeout=60000)

@@ -1,0 +1,33 @@
+[ {
+  "id" : 1,
+  "platformKey" : "baijiahao",
+  "platformName" : "百家号",
+  "officialUrl" : "https://baijiahao.baidu.com/",
+  "configSchema" : null,
+  "createTime" : "2026-03-10T15:02:45.2362494",
+  "updateTime" : "2026-03-10T15:02:45.2362494"
+}, {
+  "id" : 2,
+  "platformKey" : "toutiao",
+  "platformName" : "头条号",
+  "officialUrl" : "https://mp.toutiao.com/",
+  "configSchema" : null,
+  "createTime" : "2026-03-10T15:02:45.2362494",
+  "updateTime" : "2026-03-10T15:02:45.2362494"
+}, {
+  "id" : 3,
+  "platformKey" : "sohu",
+  "platformName" : "搜狐号",
+  "officialUrl" : "https://mp.sohu.com/",
+  "configSchema" : null,
+  "createTime" : "2026-03-10T15:02:45.2362494",
+  "updateTime" : "2026-03-10T15:02:45.2362494"
+}, {
+  "id" : 4,
+  "platformKey" : "wxgzh",
+  "platformName" : "微信公众号",
+  "officialUrl" : "https://mp.weixin.qq.com/",
+  "configSchema" : null,
+  "createTime" : "2026-03-10T15:02:45.2362494",
+  "updateTime" : "2026-03-10T15:02:45.2362494"
+} ]

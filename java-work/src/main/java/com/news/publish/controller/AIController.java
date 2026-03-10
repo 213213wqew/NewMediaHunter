@@ -1,13 +1,12 @@
 package com.news.publish.controller;
 
 import com.news.publish.model.entity.PlatformTask;
-import com.news.publish.repository.PlatformTaskRepository;
+import com.news.publish.service.PlatformTaskFileStorage;
 import com.news.publish.service.AIService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +24,7 @@ public class AIController {
     private AIService aiService;
 
     @Autowired
-    private PlatformTaskRepository platformTaskRepository;
+    private PlatformTaskFileStorage platformTaskFileStorage;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -125,7 +124,6 @@ public class AIController {
         return aiService.matchHotTopics(content, hotTopicsJson);
     }
 
-    @Transactional
     @PostMapping("/platforms/{platKey}/sync-tasks")
     public Map<String, Object> syncPlatformTasks(@PathVariable String platKey) {
         log.info("接收到平台同步请求: {}", platKey);
@@ -170,7 +168,7 @@ public class AIController {
             List<Map<String, String>> tasks = objectMapper.readValue(cleanJson, new TypeReference<>() {});
             
             // 先清除旧数据
-            platformTaskRepository.deleteByPlatformKey(normalizedKey);
+            platformTaskFileStorage.deleteByPlatformKey(normalizedKey);
             
             // 保存新数据
             if (tasks != null && !tasks.isEmpty()) {
@@ -179,7 +177,7 @@ public class AIController {
                     task.setPlatformKey(normalizedKey);
                     task.setTopic(taskMap.get("topic"));
                     task.setExtraInfo(taskMap.get("participants"));
-                    platformTaskRepository.save(task);
+                    platformTaskFileStorage.save(task);
                 }
             }
             
@@ -193,6 +191,6 @@ public class AIController {
 
     @GetMapping("/platforms/{platKey}/tasks")
     public List<PlatformTask> getPlatformTasks(@PathVariable String platKey) {
-        return platformTaskRepository.findByPlatformKey(platKey);
+        return platformTaskFileStorage.findByPlatformKey(platKey);
     }
 }

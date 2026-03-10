@@ -23,12 +23,17 @@ public class ArticleServiceImpl implements ArticleService {
     public Article saveArticle(Article article) {
         if (article.getId() == null) {
             article.setUserId(UserContext.getUserId());
+            article.onCreate();
         } else {
             Article existing = articleFileStorage.findById(article.getId()).orElseThrow(() -> new RuntimeException("文章不存在"));
             if (!UserContext.isAdmin() && !existing.getUserId().equals(UserContext.getUserId())) {
                 throw new RuntimeException("无权修改此文章");
             }
             article.setUserId(existing.getUserId());
+            if (article.getCreateTime() == null) {
+                article.setCreateTime(existing.getCreateTime());
+            }
+            article.onUpdate();
         }
         return articleFileStorage.save(article);
     }

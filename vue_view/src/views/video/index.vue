@@ -270,7 +270,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, onActivated } from 'vue';
 import { getPlatformList } from '../../api/platform';
 import { getAccountList } from '../../api/account';
 import { saveArticle } from '../../api/article';
@@ -687,6 +687,35 @@ onMounted(async () => {
     });
   } catch (e) {
     ElMessage.error('加载平台或账号失败');
+  }
+});
+
+// keep-alive 重新激活时自动刷新账号列表（用户可能刚在"账号管理"里绑定了新账号）
+onActivated(async () => {
+  try {
+    const [pRes, accounts] = await Promise.all([
+      getPlatformList(),
+      getAccountList(),
+    ]);
+    let allPlatforms = pRes || [];
+    const savedPlatforms = localStorage.getItem('active_platforms');
+    if (savedPlatforms) {
+      try {
+        const activeKeys = JSON.parse(savedPlatforms);
+        if (Array.isArray(activeKeys)) {
+          allPlatforms = allPlatforms.filter((p: Platform) => activeKeys.includes(p.platformKey));
+        }
+      } catch (_) {}
+    }
+    platformList.value = allPlatforms;
+    accountList.value = accounts || [];
+    // 保留已选中的账号（防止用户切换页面后丢失勾选），但移除已被删除的
+    const validIds = new Set(accounts.map((a: Account) => a.id));
+    form.selectedAccountIds = form.selectedAccountIds.filter(id => validIds.has(id));
+    // 确保新平台也有设置
+    allPlatforms.forEach((p: Platform) => initPlatformSettingsForPlatform(p.platformKey));
+  } catch (e) {
+    console.warn('刷新账号数据失败', e);
   }
 });
 </script>

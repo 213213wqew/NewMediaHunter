@@ -4,7 +4,7 @@ import com.news.publish.model.dto.AccountStatsDto;
 import com.news.publish.model.dto.BindStartRequest;
 import com.news.publish.model.entity.Account;
 import com.news.publish.model.entity.Platform;
-import com.news.publish.repository.PlatformRepository;
+import com.news.publish.service.PlatformService;
 import com.news.publish.service.AccountService;
 import com.news.publish.service.AccountStatsStorage;
 import com.news.publish.service.automation.PythonSkillRunner;
@@ -34,7 +34,7 @@ public class AccountController {
     private final AccountStatsStorage accountStatsStorage;
     private final SkillDiscoveryService skillDiscoveryService;
     private final PythonSkillRunner pythonSkillRunner;
-    private final PlatformRepository platformRepository;
+    private final PlatformService platformService;
 
     @GetMapping("/list")
     public List<Account> listAccounts() {
@@ -67,7 +67,7 @@ public class AccountController {
         Map<Long, Account> accountMap = new HashMap<>();
         for (Account a : accounts) {
             if (a.getCookieData() == null || a.getCookieData().isBlank()) continue;
-            Platform platform = platformRepository.findById(a.getPlatformId()).orElse(null);
+            Platform platform = platformService.getPlatformById(a.getPlatformId());
             if (platform == null) continue;
             String skillId = platform.getPlatformKey() + "_agent";
             if (skillDiscoveryService.getSkill(skillId) == null) continue;
@@ -81,7 +81,7 @@ public class AccountController {
         Map<Long, AccountStatsDto> results = new ConcurrentHashMap<>();
         List<CompletableFuture<Void>> futures = toRefresh.stream()
             .map(acc -> CompletableFuture.runAsync(() -> {
-                Platform platform = platformRepository.findById(acc.getPlatformId()).orElse(null);
+                Platform platform = platformService.getPlatformById(acc.getPlatformId());
                 if (platform == null) return;
                 String platformKey = platform.getPlatformKey();
                 SkillDiscoveryService.SkillMetadata meta = skillDiscoveryService.getSkill(platformKey + "_agent");
@@ -143,7 +143,8 @@ public class AccountController {
         if (request.getAccountName() == null || request.getAccountName().isBlank()) {
             throw new RuntimeException("请输入账号名称");
         }
-        Platform platform = platformRepository.findByPlatformKey(request.getPlatformKey().trim())
+        // 这里需要实现通过 PlatformKey 查找平台逻辑，当前 PlatformService 里还没有，先通过遍历所有的 Platform 实现：
+        Platform platform = platformService.getAllPlatforms().stream().filter(p -> request.getPlatformKey().trim().equals(p.getPlatformKey())).findFirst()
                 .orElseThrow(() -> new RuntimeException("未找到该平台: " + request.getPlatformKey()));
         String skillId = request.getPlatformKey().trim() + "_agent";
         SkillDiscoveryService.SkillMetadata meta = skillDiscoveryService.getSkill(skillId);

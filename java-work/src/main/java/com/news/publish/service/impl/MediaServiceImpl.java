@@ -3,7 +3,7 @@ package com.news.publish.service.impl;
 import com.news.publish.model.entity.Account;
 import com.news.publish.model.entity.Article;
 import com.news.publish.model.entity.MediaResource;
-import com.news.publish.repository.PlatformRepository;
+import com.news.publish.service.PlatformService;
 import com.news.publish.service.MediaService;
 import com.news.publish.service.MediaResourceFileStorage;
 import com.news.publish.service.adapter.PlatformAdapter;
@@ -23,7 +23,7 @@ import java.util.List;
 public class MediaServiceImpl implements MediaService {
 
     private final MediaResourceFileStorage mediaRepository;
-    private final PlatformRepository platformRepository;
+    private final PlatformService platformService;
     private final List<PlatformAdapter> adapters;
 
     @Override

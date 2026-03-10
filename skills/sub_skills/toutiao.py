@@ -15,6 +15,13 @@ _shared_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__fi
 if os.path.isdir(_shared_path) and _shared_path not in sys.path:
     sys.path.insert(0, _shared_path)
 
+# 确保能导入 core 模块
+_skills_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _skills_root not in sys.path:
+    sys.path.insert(0, _skills_root)
+
+from core.browser import KEEP_AWAKE_ARGS, inject_keep_awake
+
 
 def execute(params, session_dir):
     """
@@ -35,9 +42,10 @@ def execute(params, session_dir):
             user_data_dir=session_dir,
             headless=False,
             slow_mo=300,
-            args=["--start-maximized"],
+            args=["--start-maximized"] + KEEP_AWAKE_ARGS,
         )
         page = context.new_page()
+        inject_keep_awake(page)
 
         try:
             if command == "BIND_LOGIN":

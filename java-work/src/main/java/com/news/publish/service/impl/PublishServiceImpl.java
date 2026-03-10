@@ -35,8 +35,8 @@ public class PublishServiceImpl implements PublishService {
     private final ArticleFileStorage articleFileStorage;
     private final AccountService accountService;
     private final PublishTaskFileStorage taskFileStorage;
-    private final com.news.publish.repository.PlatformRepository platformRepository;
-    private final com.news.publish.repository.PublishLogRepository logRepository;
+    private final com.news.publish.service.PlatformService platformService;
+    private final com.news.publish.service.PublishLogFileStorage logRepository;
     private final List<PlatformAdapter> adapters;
     private final com.news.publish.service.MediaService mediaService;
     private final com.news.publish.service.MediaResourceFileStorage mediaResourceFileStorage;
@@ -191,9 +191,10 @@ public class PublishServiceImpl implements PublishService {
             }
             recordLog(taskId, "INFO", "内容合规性检查通过", null, null, null, null);
 
-            String platformKey = platformRepository.findById(account.getPlatformId())
-                    .map(p -> p.getPlatformKey())
-                    .orElseThrow(() -> new RuntimeException("未知平台协议"));
+            String platformKey = platformService.getPlatformById(account.getPlatformId()) != null ? platformService.getPlatformById(account.getPlatformId()).getPlatformKey() : null;
+            if (platformKey == null) {
+                throw new RuntimeException("未知平台协议");
+            }
 
             PlatformAdapter adapter = adapters.stream()
                     .filter(a -> a.getPlatformKey().equals(platformKey))
@@ -354,9 +355,8 @@ public class PublishServiceImpl implements PublishService {
 
         List<PublishStats.ChartData> platformData = new ArrayList<>();
         platformCounts.forEach((pid, count) -> {
-            String platformName = platformRepository.findById(pid)
-                    .map(p -> p.getPlatformName())
-                    .orElse("未知平台");
+            com.news.publish.model.entity.Platform p = platformService.getPlatformById(pid);
+            String platformName = p != null ? p.getPlatformName() : "未知平台";
             platformData.add(new PublishStats.ChartData(platformName, count));
         });
         stats.setPlatformData(platformData);

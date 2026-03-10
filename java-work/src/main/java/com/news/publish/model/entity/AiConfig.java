@@ -1,6 +1,5 @@
 package com.news.publish.model.entity;
 
-import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 
@@ -8,12 +7,8 @@ import java.time.LocalDateTime;
  * 用户 AI 模型配置（每用户独立一条记录）
  */
 @Data
-@Entity
-@Table(name = "ai_config")
 public class AiConfig {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     /**
@@ -39,7 +34,6 @@ public class AiConfig {
     /**
      * 所属用户 ID（每个用户独立配置）
      */
-    @Column(nullable = false, unique = true)
     private Long userId;
 
     /**
@@ -48,10 +42,4 @@ public class AiConfig {
     private Boolean enableAiImage = false;
 
     private LocalDateTime updateTime;
-
-    @PrePersist
-    @PreUpdate
-    protected void onUpdate() {
-        updateTime = LocalDateTime.now();
-    }
 }

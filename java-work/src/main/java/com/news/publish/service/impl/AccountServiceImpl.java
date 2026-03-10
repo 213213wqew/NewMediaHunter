@@ -32,6 +32,16 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public Account saveAccount(Account account) {
+        if (account.getId() == null) {
+            account.onCreate();
+        } else {
+            Account existing = accountFileStorage.findById(account.getId()).orElse(null);
+            if (existing != null) {
+                if (account.getCreateTime() == null) account.setCreateTime(existing.getCreateTime());
+                if (account.getUserId() == null) account.setUserId(existing.getUserId());
+            }
+            account.onUpdate();
+        }
         return accountFileStorage.save(account);
     }
 

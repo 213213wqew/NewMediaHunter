@@ -116,7 +116,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { fetchHotNews, fetchArticleContent, generateArticle, matchImage, polishArticle, suggestImages, getPlatformTasks, matchHotTopics, type HotNews } from '../../api/ai';
+import { fetchHotNews, fetchArticleContent, generateArticle, matchImage, polishArticle, getPlatformTasks, matchHotTopics, type HotNews } from '../../api/ai';
 import { ElMessage } from 'element-plus';
 
 const router = useRouter();
