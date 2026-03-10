@@ -155,18 +155,44 @@
                   </div>
                 </div>
 
+                <!-- 作品声明：今日头条特有 -->
+                <div v-if="['toutiao', 'tt'].includes(plat.platformKey)" class="mini-form-group span-2-rows">
+                  <label>⚖️ 作品声明</label>
+                  <div class="work-statement-list">
+                    <label class="statement-item">
+                      <input type="checkbox" v-model="(form.platformSettings as any)[plat.platformKey].workStatements" value="取材网络" /> 取材网络
+                    </label>
+                    <label class="statement-item">
+                      <input type="checkbox" v-model="(form.platformSettings as any)[plat.platformKey].workStatements" value="引用站内" /> 引用站内
+                    </label>
+                    <label class="statement-item">
+                      <input type="checkbox" v-model="(form.platformSettings as any)[plat.platformKey].workStatements" value="个人观点，仅供参考" /> 个人观点
+                    </label>
+                    <label class="statement-item">
+                      <input type="checkbox" v-model="(form.platformSettings as any)[plat.platformKey].workStatements" value="引用AI" /> 引用AI
+                    </label>
+                    <label class="statement-item">
+                      <input type="checkbox" v-model="(form.platformSettings as any)[plat.platformKey].workStatements" value="虚构演绎，故事经历" /> 虚构演绎
+                    </label>
+                    <label class="statement-item">
+                      <input type="checkbox" v-model="(form.platformSettings as any)[plat.platformKey].workStatements" value="投资观点，仅供参考" /> 投资观点
+                    </label>
+                    <label class="statement-item">
+                      <input type="checkbox" v-model="(form.platformSettings as any)[plat.platformKey].workStatements" value="健康医疗分享，仅供参考" /> 健康医疗
+                    </label>
+                  </div>
+                </div>
+
                 <div class="settings-grid">
                   <div class="mini-form-group">
                     <label>📝 发布类型</label>
                     <select v-model="(form.platformSettings as any)[plat.platformKey].publishType" class="mini-input">
                       <option value="news">图文</option>
-                      <option v-if="!['bjh', 'baijiahao'].includes(plat.platformKey)" value="video">视频</option>
-                      <option value="dynamic">动态</option>
                     </select>
                   </div>
 
-                  <!-- 百家号封面设置：仅在非动态类型时显示 -->
-                  <div v-if="(['bjh', 'baijiahao'].includes(plat.platformKey)) && (form.platformSettings as any)[plat.platformKey].publishType !== 'dynamic'" class="mini-form-group span-2-rows">
+                  <!-- 封面设置：仅在非动态类型时显示 -->
+                  <div v-if="(['bjh', 'baijiahao', 'toutiao', 'tt'].includes(plat.platformKey)) && (form.platformSettings as any)[plat.platformKey].publishType !== 'dynamic'" class="mini-form-group span-2-rows cover-section">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                       <label>🖼️ 封面图 (共 {{ articleImages.length }} 张)</label>
                       <button class="btn-mini-ai" style="padding: 2px 6px; font-size: 10px;" title="重新从正文提取图片" @click.stop="forceUpdateImages">🔄 提取</button>
@@ -188,43 +214,13 @@
                     </div>
                   </div>
 
-                  <div class="mini-form-group">
-                    <label>🗂️ 内容分类</label>
-                    <select v-model="(form.platformSettings as any)[plat.platformKey].category" class="mini-input">
-                      <option value="">-- 选择分类 --</option>
-                      <option>科技互联网</option>
-                      <option>财经金融</option>
-                      <option>生活方式</option>
-                      <option>娱乐明星</option>
-                      <option>体育赛事</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="mini-form-group" style="margin-top: 10px;">
-                  <label>🏷️ {{ plat.platformKey === 'bjh' || plat.platformKey === 'baijiahao' ? '实时流量话题' : '来源标签' }}</label>
-                  <div style="display: flex; gap: 5px;">
-                    <input 
-                      v-model="(form.platformSettings as any)[plat.platformKey].tags" 
-                      class="mini-input" 
-                      :placeholder="['bjh', 'baijiahao'].includes(plat.platformKey) ? '辅助话题...' : '标签1, 标签2...'" 
-                      style="flex: 1;" 
-                    />
-                    <button 
-                      class="btn-mini-ai" 
-                      :disabled="platformAiLoading[plat.platformKey]"
-                      @click.stop="handlePlatformAiTags(plat.platformKey)"
-                    >
-                      <span v-if="platformAiLoading[plat.platformKey]" class="mini-loader"></span>
-                      <span v-else>AI</span>
-                    </button>
-                  </div>
                   
                   <!-- 本地话题池展示 -->
-                  <div v-if="(platformTopics as any)[plat.platformKey]?.length > 0" class="mini-topic-pool">
+                  <div v-if="(platformTopics as any)[plat.platformKey]?.length > 0" class="mini-topic-pool full-width">
                     <div class="pool-header">
                        <div class="pool-title">🔥 实时热点池 (点击锁定主话题)</div>
                     </div>
-                    <div class="pool-list">
+                    <div class="pool-list scroller">
                       <!-- 新增：特殊指令模式 (仅限百家号相关) -->
                       <template v-if="['bjh', 'baijiahao'].includes(plat.platformKey)">
                         <span 
@@ -257,7 +253,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="mini-schedule">
+                <div class="mini-schedule" v-if="false">
                   <label class="schedule-label">
                     <input type="checkbox" v-model="(form.platformSettings as any)[plat.platformKey].isScheduled" /> 定时发布
                   </label>
@@ -458,6 +454,7 @@ const form = reactive({
     selectedTopic: string; // 已锁定的主话题
     publishType: string;
     coverImage: string;
+    workStatements: string[];
     isScheduled: boolean;
     scheduledTime: string;
   }>
@@ -599,6 +596,7 @@ onMounted(async () => {
               selectedTopic: ['bjh', 'baijiahao'].includes(p.platformKey) ? '__DEFAULT__' : '', 
               publishType: 'news',
               coverImage: '',
+              workStatements: ['toutiao', 'tt'].includes(p.platformKey) ? ['虚构演绎，故事经历'] : [],
               isScheduled: false,
               scheduledTime: ''
             };
@@ -798,6 +796,7 @@ const togglePlatform = (plat: Platform) => {
       selectedTopic: '', 
       publishType: 'news',
       coverImage: '',
+      workStatements: [],
       isScheduled: false,
       scheduledTime: ''
     };
@@ -1118,6 +1117,7 @@ const handleTopicClick = (platKey: string, topic: string) => {
       selectedTopic: '',
       publishType: 'article',
       coverImage: '',
+      workStatements: [],
       isScheduled: false,
       scheduledTime: ''
     };
@@ -1306,17 +1306,19 @@ const handleSave = async (status: number) => {
 const handlePublish = async () => {
   if (form.selectedAccounts.length === 0) return ElMessage.warning('请选择至少一个发布账号');
   
+  // 锁定按钮，防止重复点击
   publishing.value = true;
   
   try {
     // 发布前自动保存当前内容与平台设置（含封面），确保后端用到的是最新选择
-    ElMessage.info('发布前自动保存当前内容与设置…');
+    ElMessage.info('正在保存当前内容并划拨发布任务...');
     const article = await handleSave(1);
-    if (!article) return;
+    if (!article) {
+       publishing.value = false;
+       return;
+    }
 
-    ElMessage.info('已保存，正在提交发布任务至后台队列...');
-    
-    // 对每个选中平台的额外配置（其实直接随文章平台设置入库，后端会自动处理）
+    // 提交发布请求
     const res = await submitPublishTask({
         articleId: article.id,
         accountIds: form.selectedAccounts,
@@ -1324,14 +1326,22 @@ const handlePublish = async () => {
     });
     
     if (res && res.length > 0) {
-        ElMessage.success(`已成功划拨 ${res.length} 个发布任务至后台队列，将按账号排队全自动异步发布`);
+        ElMessage.success({
+          message: `成功划拨 ${res.length} 个任务！后台正以 8 线程受控并行发布，请在「发布任务」中查看进度。`,
+          duration: 5000,
+          showClose: true
+        });
     } else {
-        ElMessage.warning('提交发布任务记录为空');
+        ElMessage.warning('未生成有效的发布任务记录');
     }
   } catch (e) {
-    ElMessage.error('自动化分发提交过程中出现异常');
+    ElMessage.error('分发任务提交失败，请检查网络或后端服务');
+    console.error('Publish error:', e);
   } finally {
-    publishing.value = false;
+    // 延迟一秒释放锁定，确保 UI 反馈充分
+    setTimeout(() => {
+        publishing.value = false;
+    }, 1000);
   }
 };
 </script>
@@ -1437,6 +1447,26 @@ const handlePublish = async () => {
   gap: 6px;
   font-size: 13px;
   color: #e2e8f0;
+  cursor: pointer;
+}
+.work-statement-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 5px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px;
+  border-radius: 6px;
+}
+.statement-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.statement-item input {
   cursor: pointer;
 }
 .account-check-item input[type="checkbox"] {
@@ -2580,8 +2610,15 @@ const handlePublish = async () => {
 
 .settings-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 20px;
+  grid-template-columns: 1fr 140px; /* 稍微加宽封面预览列 */
+  gap: 12px 20px;
+}
+.full-width {
+  grid-column: span 2;
+}
+.cover-section {
+  grid-row: span 2;
+  align-self: start;
 }
 
 .mini-form-group {
