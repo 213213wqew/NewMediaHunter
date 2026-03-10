@@ -60,6 +60,9 @@ public class PythonSkillRunner {
             int exitCode = process.waitFor();
             log.info("Python 技能执行完毕，退出码: {}", exitCode);
 
+            // 自动清理 Python 下载的临时文件
+            cleanupTempFiles(meta.getPath());
+
             // 解析最后一行 JSON 结果
             String lastLine = getLastLine(output.toString());
             if (lastLine != null && lastLine.trim().startsWith("{")) {
@@ -80,13 +83,54 @@ public class PythonSkillRunner {
         return lines[lines.length - 1];
     }
 
+    /**
+     * 读取 uploads/temp_files.json 并物理删除记录的文件
+     */
+    private void cleanupTempFiles(String skillPath) {
+        try {
+            // 定位 uploads 目录。由于 Python 脚本在 skills/platforms/.. 或 skills/sub_skills 下运行，
+            // 它的 uploads_dir 通常在 skills/../uploads (即根目录下的 uploads)
+            // 这里的 skillPath 是 e:/java-Project/新闻发布程序/skills
+            File uploadsDir = new File(new File(skillPath).getParentFile(), "uploads");
+            if (!uploadsDir.exists()) {
+                // 尝试备选路径：与 skills 同级的 java-work/uploads
+                uploadsDir = new File(new File(skillPath).getParentFile(), "java-work/uploads");
+            }
+            
+            File logFile = new File(uploadsDir, "temp_files.json");
+            if (!logFile.exists() || logFile.length() == 0) return;
+
+            log.info("开始清理临时文件，记录文件: {}", logFile.getAbsolutePath());
+            java.util.List<String> filesToDelete = objectMapper.readValue(logFile, new com.fasterxml.jackson.core.type.TypeReference<java.util.List<String>>() {});
+            
+            int deletedCount = 0;
+            for (String path : filesToDelete) {
+                File f = new File(path);
+                if (f.exists()) {
+                    if (f.delete()) {
+                        deletedCount++;
+                    } else {
+                        log.warn("无法删除临时文件: {}", path);
+                    }
+                }
+            }
+            
+            // 清空记录文件 (不是删除 JSON，而是写回空数组，防止并发写冲突)
+            objectMapper.writeValue(logFile, new java.util.ArrayList<String>());
+            log.info("临时文件清理完成，共删除 {} 个文件", deletedCount);
+
+        } catch (Exception e) {
+            log.warn("清理临时文件过程中发生异常: {}", e.getMessage());
+        }
+    }
+
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class SkillExecutionResult {
         private boolean success;
         private String message;
         private String url;
-        private Map<String, Object> data;
+        private Object data; // 改为 Object，以兼容 Python 直接返回数组 [] 的场景
 
         public static SkillExecutionResult error(String msg) {
             SkillExecutionResult res = new SkillExecutionResult();

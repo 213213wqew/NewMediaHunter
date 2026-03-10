@@ -22,6 +22,24 @@ except ImportError:
     ask_ai = None
 
 
+def log_temp_file(uploads_dir, file_path):
+    """记录临时文件路径到 temp_files.json，供 Java 清理"""
+    try:
+        log_path = os.path.join(uploads_dir, "temp_files.json")
+        temp_files = []
+        if os.path.exists(log_path):
+            with open(log_path, "r", encoding="utf-8") as f:
+                temp_files = json.load(f)
+        
+        abs_path = os.path.abspath(file_path)
+        if abs_path not in temp_files:
+            temp_files.append(abs_path)
+            with open(log_path, "w", encoding="utf-8") as f:
+                json.dump(temp_files, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"DEBUG: 记录临时文件失败: {e}")
+
+
 def _smart_action(page, action_name: str, exact_text: str) -> None:
     try:
         locator = page.get_by_text(exact_text, exact=True).last
@@ -113,10 +131,12 @@ def run(params: dict, session_dir: str, cookie_json_str: str) -> dict:
             
             print(f"DEBUG: 使用素材目录: {uploads_dir}")
             
+            import html
             img_urls = re.findall(r'src=[\'"]?([^\'"\s>]+)[\'"]?', content)
-            unique_urls = list(set(img_urls))
+            unique_urls = list(set([html.unescape(u) for u in img_urls]))
             url_map = {}
-            
+            url_to_local_path = {}  # 正文洗图时 URL -> 本地路径，供封面复用
+
             if unique_urls:
                 print(f"DEBUG: 发现 {len(unique_urls)} 个图片链接，准备通过 UI 方式『洗图』...")
                 
@@ -145,30 +165,68 @@ def run(params: dict, session_dir: str, cookie_json_str: str) -> dict:
                     local_path = None
                     try:
                         if "/api/file/view/" in url:
-                            filename = url.split('/')[-1].split('?')[0]
+                            filename = url.split("/api/file/view/")[-1].split("?")[0]
                             local_path = os.path.normpath(os.path.join(uploads_dir, filename))
                             if not os.path.exists(local_path):
                                 print(f"DEBUG: 本地文件不存在: {local_path}")
                                 continue
                         elif url.startswith("http"):
-                            # 远程图也先转本地，再 UI 上传，确保 100% 成功
-                            print(f"DEBUG: 下载远程图进行 UI 转发: {url}")
-                            req = urllib.request.Request(url, headers={
-                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                                'Referer': 'https://www.toutiao.com/'
-                            })
-                            with urllib.request.urlopen(req, timeout=10) as response:
-                                img_data = response.read()
-                                local_path = os.path.join(uploads_dir, f"tmp_{int(time.time())}.jpg")
-                                with open(local_path, "wb") as f:
-                                    f.write(img_data)
+                            # 依赖 Python 真实浏览器内核的高级下载能力突破防盗链
+                            print(f"DEBUG: 启用 Playwright 底层网络库下载: {url}")
+                            try:
+                                # 【极客修复】：摒弃 JS fetch 的跨域黑洞。直接利用当前 Browser Context 的原生 request 发包
+                                # 它完美复用了当前浏览器的一切 Cookie 和指纹信息，且属于 Node.js 层级的发包，无视页面的 CORS 限制
+                                ref_opt = "https://www.toutiao.com/" if ("toutiaoimg" in url or "pstatp" in url) else ("https://www.baidu.com/" if "baidu.com" in url else None)
+                                
+                                req_headers = {
+                                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                                    "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"
+                                }
+                                if ref_opt:
+                                    req_headers["Referer"] = ref_opt
+                                
+                                # 使用 context 级别隔离的抓包
+                                api_resp = context.request.get(url, headers=req_headers, timeout=15000)
+                                
+                                if api_resp.ok:
+                                    img_data = api_resp.body()
+                                    if len(img_data) > 1024:  # 确保不是个空壳文件（至少 1KB 上下的正常图片防暴击）
+                                        local_path = os.path.join(uploads_dir, f"tmp_{int(time.time())}.jpg")
+                                        with open(local_path, "wb") as f:
+                                            f.write(img_data)
+                                        log_temp_file(uploads_dir, local_path)
+                                        print(f"DEBUG: 成功通过 Context 原生下载穿透防盗链: {local_path}")
+                                    else:
+                                        print(f"DEBUG: 获取到的图片体积异常太小 ({len(img_data)} bytes)，可能被限流拦截")
+                                else:
+                                    print(f"DEBUG: Context 原生网络请求图片失败，状态码: {api_resp.status}")
+                            except Exception as e:
+                                print(f"DEBUG: 提取图片全面失败: {e}")
                         
                         if local_path and os.path.exists(local_path):
+                            time.sleep(3)
+                            url_to_local_path[url] = local_path  # 记录供封面复用
+                            
+                            # 预激活：在触发上传按钮之前，必须先点击一下正文编辑区，富文本工具栏才会出现/生效
+                            try:
+                                print(f"DEBUG: 尝试激活编辑器以调出图片上传按钮...")
+                                if is_iframe:
+                                    page.frame_locator("#ueditor_0").locator("body").click(force=True)
+                                else:
+                                    page.locator("#real-body-editor").click(force=True)
+                                time.sleep(1)
+                            except Exception as focus_err:
+                                print(f"DEBUG: 激活编辑器焦点失败: {focus_err}")
+
                             # 1. 触发上传按钮
-                            # 尝试多个可能的按钮选择器
-                            image_btn = page.locator(".edui-for-insertimage, .cheetah-icon-image, button[aria-label*='图片'], ._73a3a52aab7e3a36-default").first
+                            # 尝试多个可能的按钮选择器 (根据截图 edui29_state 或 class 包含 edui-for-insertimage)
+                            time.sleep(3)
+                            image_btn = page.locator(".edui-for-insertimage, #edui29_state, .cheetah-icon-image, button[aria-label*='图片'], ._73a3a52aab7e3a36-default").first
                             if image_btn.count() > 0:
-                                image_btn.click()
+                                try:
+                                    image_btn.click(timeout=5000)
+                                except Exception:
+                                    image_btn.evaluate("el => el.click()")
                                 time.sleep(1)
                                 
                                 # 2. 查找文件输入框 (通常是隐藏的，但 Playwright 可以直接 set_input_files)
@@ -212,7 +270,10 @@ def run(params: dict, session_dir: str, cookie_json_str: str) -> dict:
                 if url_map:
                     print(f"DEBUG: UI 清洗完成，共转换 {len(url_map)} 张图片")
                 for old_url, new_url in url_map.items():
+                    # 这里要同时替换原始内容里的转义与非转义版本，防止错漏
+                    import html
                     content = content.replace(old_url, new_url)
+                    content = content.replace(html.escape(old_url), new_url)
             # =================================================================
 
             is_iframe = page.locator("#ueditor_0").count() > 0
@@ -293,11 +354,31 @@ def run(params: dict, session_dir: str, cookie_json_str: str) -> dict:
                 except Exception:
                     page.keyboard.press("Escape")
 
-            # ================= 封面设置逻辑 (单图 + 自定义/AI) =================
+            # ================= 封面设置逻辑：优先使用前端选择的本地图 =================
             print("DEBUG: 开始设置单图封面...")
             has_set_cover = False
             local_cover_path = params.get("localCoverPath")
-            
+            # 若后端未传本地路径，尝试从平台设置中解析由前端传入的封面链接
+            if not local_cover_path:
+                ps = (params.get("platformSettings") or {})
+                bjh = ps.get("baijiahao") or ps.get("bjh") or {}
+                cover_ref = (bjh.get("coverImage") or "").strip() if isinstance(bjh, dict) else ""
+                
+                if cover_ref:
+                    import html
+                    clean_cover_ref = html.unescape(cover_ref)
+                    # 1. 如果这个外链封面图，刚刚已经在正文处理时被 Python (Playwright) 强力截取下载到本地了
+                    if clean_cover_ref in url_to_local_path and os.path.exists(url_to_local_path[clean_cover_ref]):
+                        local_cover_path = url_to_local_path[clean_cover_ref]
+                        print(f"DEBUG: 封面图复用了已成功突破防盗链下载的本地素材: {local_cover_path}")
+                    # 2. 如果是传统 Java 已经洗好直接传过来的 /api/file/view/ 路径
+                    elif "/api/file/view/" in cover_ref:
+                        fn = cover_ref.split("/api/file/view/")[-1].split("?")[0]
+                        cand = os.path.normpath(os.path.join(uploads_dir, fn))
+                        if os.path.exists(cand):
+                            local_cover_path = cand
+                            print(f"DEBUG: 封面从平台设置解析为素材库图片: {fn}")
+
             try:
                 single_radio = page.get_by_text("单图", exact=True).first
                 if single_radio.count() > 0:
@@ -315,9 +396,9 @@ def run(params: dict, session_dir: str, cookie_json_str: str) -> dict:
                         cover_trigger.evaluate("el => el.click()")
                     time.sleep(2)
 
-                # 优先级 1: 本地相册上传 (如果前端选了图)
+                # 优先级 1: 使用前端选择的封面（本地图，来自素材中心或后端下发的路径）
                 if local_cover_path and os.path.exists(local_cover_path):
-                    print(f"DEBUG: 检测到本地封面，准备上传: {local_cover_path}")
+                    print(f"DEBUG: 使用前端选择的封面(本地图): {local_cover_path}")
                     file_input = page.locator('input[type="file"][accept*="image"]').first
                     if file_input.count() > 0:
                         try:
@@ -375,13 +456,16 @@ def run(params: dict, session_dir: str, cookie_json_str: str) -> dict:
             
             # =================================================================
 
-            time.sleep(200)
-            #     _smart_action(page, "存草稿", "存草稿")
-            # else:
-            #     _smart_action(page, "发布", "发布")
-            # print("DEBUG: 发布指令已执行")
-            # time.sleep(10)
-            return {"success": True, "message": "发布成功", "final_url": page.url}
+            time.sleep(2)
+            is_draft = params.get("isDraft") or params.get("draft") or False
+            if is_draft:
+                _smart_action(page, "存草稿", "存草稿")
+            else:
+                _smart_action(page, "发布", "发布")
+            
+            print("DEBUG: 发布指令已执行")
+            time.sleep(5)
+            return {"success": True, "message": "已执行发布/存草稿指令", "final_url": page.url}
         except Exception as e:
             return {"success": False, "message": str(e)}
         finally:

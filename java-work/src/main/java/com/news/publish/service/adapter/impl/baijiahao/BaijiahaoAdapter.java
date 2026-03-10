@@ -100,6 +100,7 @@ public class BaijiahaoAdapter implements PlatformAdapter {
             params.put("htmlContent", content != null ? content : article.getContent());
             params.put("summary", article.getSummary());
             params.put("tags", article.getTags());
+            params.put("isDraft", Integer.valueOf(0).equals(article.getStatus()));
             // 将本地 uploads 的绝对路径传给 Python 脚本，避免路径猜测
             String localUploadsDir = java.nio.file.Paths.get("uploads").toAbsolutePath().toString();
             params.put("localUploadsDir", localUploadsDir);
@@ -141,29 +142,34 @@ public class BaijiahaoAdapter implements PlatformAdapter {
                                 }
                                 if (cached == null || !params.containsKey("localCoverPath")) {
                                     try {
-                                        java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("bjh_cover_", ".jpg");
-                                        
-                                        // 伪装浏览器请求头以绕过防盗链 (resolve 403 Forbidden)
                                         HttpHeaders headers = new HttpHeaders();
                                         headers.set(HttpHeaders.USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-                                        headers.set(HttpHeaders.REFERER, "https://www.toutiao.com/");
+                                        headers.set(HttpHeaders.ACCEPT, "image/webp,image/apng,image/*,*/*;q=0.8");
+                                        if (coverImage != null && coverImage.contains("toutiaoimg.com")) {
+                                            headers.set(HttpHeaders.REFERER, "https://mp.toutiao.com/");
+                                            headers.set("Origin", "https://mp.toutiao.com");
+                                        } else {
+                                            headers.set(HttpHeaders.REFERER, "https://www.toutiao.com/");
+                                        }
                                         HttpEntity<String> entity = new HttpEntity<>(headers);
-                                        
                                         org.springframework.http.ResponseEntity<byte[]> res = restTemplate.exchange(
-                                                coverImage, 
-                                                org.springframework.http.HttpMethod.GET, 
-                                                entity, 
+                                                coverImage,
+                                                org.springframework.http.HttpMethod.GET,
+                                                entity,
                                                 byte[].class
                                         );
-                                        
                                         byte[] imageBytes = res.getBody();
-                                        if (imageBytes != null) {
-                                            java.nio.file.Files.write(tempFile, imageBytes);
-                                            params.put("localCoverPath", tempFile.toAbsolutePath().toString());
-                                            log.info("已下载远程封面至临时文件: {}", tempFile.toAbsolutePath());
+                                        if (imageBytes != null && imageBytes.length > 0) {
+                                            java.nio.file.Path uploadsDir = java.nio.file.Paths.get("uploads").toAbsolutePath();
+                                            java.nio.file.Files.createDirectories(uploadsDir);
+                                            String coverFileName = "cover_" + task.getId() + "_" + System.currentTimeMillis() + ".jpg";
+                                            java.nio.file.Path dest = uploadsDir.resolve(coverFileName);
+                                            java.nio.file.Files.write(dest, imageBytes);
+                                            params.put("localCoverPath", dest.toString());
+                                            log.info("已下载封面至素材中心(命名): {}", dest.getFileName());
                                         }
                                     } catch (Exception e) {
-                                        log.error("下载远程封面图失败: {}", coverImage, e);
+                                        log.warn("下载远程封面图失败: {} - {}", coverImage, e.getMessage());
                                     }
                                 }
                             }
@@ -176,11 +182,12 @@ public class BaijiahaoAdapter implements PlatformAdapter {
                 throw new RuntimeException("百家号技能执行失败: " + result.getMessage());
             }
             if (result != null && result.getData() != null) {
-                if (result.getData().get("platformArticleId") != null) {
-                    task.setPlatformArticleId(String.valueOf(result.getData().get("platformArticleId")));
+                Map<String, Object> dataMap = (result.getData() instanceof Map) ? (Map<String, Object>) result.getData() : new java.util.HashMap<>();
+                if (dataMap.get("platformArticleId") != null) {
+                    task.setPlatformArticleId(String.valueOf(dataMap.get("platformArticleId")));
                 }
                 if (result.getUrl() != null) task.setPlatformArticleUrl(result.getUrl());
-                else if (result.getData().get("final_url") != null) task.setPlatformArticleUrl(String.valueOf(result.getData().get("final_url")));
+                else if (dataMap.get("final_url") != null) task.setPlatformArticleUrl(String.valueOf(dataMap.get("final_url")));
             }
             if (task.getPlatformArticleId() == null) {
                 task.setPlatformArticleId("bjh_auto_" + System.currentTimeMillis() / 1000);
@@ -289,11 +296,13 @@ public class BaijiahaoAdapter implements PlatformAdapter {
         if (result != null && !result.isSuccess()) {
             throw new RuntimeException(result.getMessage() != null ? result.getMessage() : "百家号视频发布失败");
         }
-        if (result != null && result.getData() != null) {
-            if (result.getData().get("platformArticleId") != null) {
-                task.setPlatformArticleId(String.valueOf(result.getData().get("platformArticleId")));
+        if (result.isSuccess()) {
+            Map<String, Object> dataMap = (result.getData() instanceof Map) ? (Map<String, Object>) result.getData() : new java.util.HashMap<>();
+            if (dataMap.get("platformArticleId") != null) {
+                task.setPlatformArticleId(String.valueOf(dataMap.get("platformArticleId")));
             }
-            if (result.getUrl() != null) task.setPlatformArticleUrl(result.getUrl());
+            if (dataMap.get("final_url") != null) task.setPlatformArticleUrl(String.valueOf(dataMap.get("final_url")));
+            task.setPublishStatus(1);
         }
         if (task.getPlatformArticleId() == null) {
             task.setPlatformArticleId("bjh_video_" + System.currentTimeMillis() / 1000);

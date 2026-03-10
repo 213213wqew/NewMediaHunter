@@ -104,6 +104,61 @@ public class InteractiveBrowserService {
     }
 
     /**
+     * 获取创作罐头站点的登录 Cookie，专供纯 API 爬虫使用
+     */
+    public String getCzgtsCookie() {
+        ensureBrowserReady();
+        if (persistentContext == null) return "";
+        try {
+            List<com.microsoft.playwright.options.Cookie> cookies = persistentContext.cookies("https://www.czgts.cn");
+            StringBuilder sb = new StringBuilder();
+            for (com.microsoft.playwright.options.Cookie c : cookies) {
+                sb.append(c.name).append("=").append(c.value).append("; ");
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            log.warn("无法获取 czgts_cookie: {}", e.getMessage());
+            return "";
+        }
+    }
+
+    /**
+     * 专用于首次未登录时：打开创作罐头首页，并最多等待 2 分钟让用户手动扫码/填写账号登录
+     * 当检测到系统获取到长 Cookie 时自动提取并返回
+     */
+    public String loginAndGetCzgtsCookie() {
+        log.info("未检测到有效 Cookie，即将打开 https://www.czgts.cn/v1/home 请手动登录...");
+        ensureBrowserReady();
+        Page page = null;
+        try {
+            page = persistentContext.newPage();
+            page.navigate("https://www.czgts.cn/v1/home");
+            
+            log.info("等待用户扫码/密码登录 (最大等待 120 秒)...");
+            for (int i = 0; i < 60; i++) {
+                String currentCookie = getCzgtsCookie();
+                if (currentCookie != null && currentCookie.length() > 50) { 
+                    log.info("登录态检测成功！已成功拦截 Cookie。");
+                    // 拿到 Cookie 后立即关闭浏览器，正如用户要求的“自动关闭”
+                    closeBrowser(); 
+                    return currentCookie;
+                }
+                try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
+            }
+            log.warn("等待用户登录超时或用户关闭了页面。");
+        } catch (Exception e) {
+            log.error("打开登录页面失败: {}", e.getMessage());
+        } finally {
+            if (page != null) {
+                try { page.close(); } catch (Exception ignored) {}
+            }
+            // 兜底：如果循环结束也没拿，或者报错了，也应该尝试关闭，避免留个空窗口
+            closeBrowser();
+        }
+        return "";
+    }
+
+    /**
      * 彻底关闭浏览器并释放资源
      */
     public synchronized void closeBrowser() {

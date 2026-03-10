@@ -1309,10 +1309,12 @@ const handlePublish = async () => {
   publishing.value = true;
   
   try {
+    // 发布前自动保存当前内容与平台设置（含封面），确保后端用到的是最新选择
+    ElMessage.info('发布前自动保存当前内容与设置…');
     const article = await handleSave(1);
     if (!article) return;
 
-    ElMessage.info('正在提交发布任务至后台队列...');
+    ElMessage.info('已保存，正在提交发布任务至后台队列...');
     
     // 对每个选中平台的额外配置（其实直接随文章平台设置入库，后端会自动处理）
     const res = await submitPublishTask({

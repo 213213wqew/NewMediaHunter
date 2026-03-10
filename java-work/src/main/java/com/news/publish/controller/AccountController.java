@@ -95,7 +95,7 @@ public class AccountController {
                 try {
                     PythonSkillRunner.SkillExecutionResult result = pythonSkillRunner.execute(meta, params);
                     if (!result.isSuccess() || result.getData() == null) return;
-                    Map<String, Object> data = result.getData();
+                    Map<String, Object> data = (result.getData() instanceof Map) ? (Map<String, Object>) result.getData() : new HashMap<>();
                     AccountStatsDto dto = new AccountStatsDto();
                     dto.setAccountId(acc.getId());
                     dto.setTotalFans(_int(data.get("totalFans")));
@@ -159,7 +159,10 @@ public class AccountController {
         if (!result.isSuccess()) {
             throw new RuntimeException(result.getMessage() != null ? result.getMessage() : "登录未完成或超时");
         }
-        Object cookieJson = result.getData() != null ? result.getData().get("cookieJson") : null;
+        Object cookieJson = null;
+        if (result.getData() instanceof Map) {
+            cookieJson = ((Map<String, Object>) result.getData()).get("cookieJson");
+        }
         if (cookieJson == null || cookieJson.toString().isBlank()) {
             throw new RuntimeException("未获取到登录凭证，请重试");
         }

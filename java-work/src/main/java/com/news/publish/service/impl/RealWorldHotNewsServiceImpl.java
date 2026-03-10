@@ -1,13 +1,17 @@
 package com.news.publish.service.impl;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.news.publish.model.dto.HotNewsDto;
 import com.news.publish.service.HotNewsService;
 import com.news.publish.service.automation.ArticleExtractorService;
 import com.news.publish.service.automation.InteractiveBrowserService;
+import com.news.publish.service.automation.PythonSkillRunner;
+import com.news.publish.service.automation.SkillDiscoveryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
@@ -17,6 +21,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.ArrayList;
+import java.io.File;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.Year;
 import java.time.format.DateTimeFormatter;
@@ -39,6 +45,10 @@ public class RealWorldHotNewsServiceImpl implements HotNewsService {
     private final InteractiveBrowserService interactiveBrowserService;
     private final ArticleExtractorService articleExtractorService;
     private final AiHotNewsServiceImpl aiFallbackService;
+    private final PythonSkillRunner pythonSkillRunner;
+
+    @Value("${app.skills-path:e:/java-Project/新闻发布程序/skills}")
+    private String skillsPath;
 
     private String resolveUrl(String tab) {
         if ("network".equals(tab)) return BASE_URL + "network";
@@ -46,32 +56,103 @@ public class RealWorldHotNewsServiceImpl implements HotNewsService {
         return BASE_URL + "popular"; // 低粉爆款 或默认
     }
 
+    private String getCookieFromConfig() {
+        try {
+            // 读取项目根目录或同级目录下的 config.json
+            File configFile = Paths.get(System.getProperty("user.dir"), "config.json").toFile();
+            if (configFile.exists()) {
+                JsonNode configNode = objectMapper.readTree(configFile);
+                if (configNode.has("czgts_cookie")) {
+                    return configNode.get("czgts_cookie").asText();
+                }
+            }
+        } catch (Exception e) {
+            log.warn("无法从 config.json 读取 Cookie: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    private void saveCookieToConfig(String cookie) {
+        try {
+            File configFile = Paths.get(System.getProperty("user.dir"), "config.json").toFile();
+            com.fasterxml.jackson.databind.node.ObjectNode configNode;
+            if (configFile.exists()) {
+                configNode = (com.fasterxml.jackson.databind.node.ObjectNode) objectMapper.readTree(configFile);
+            } else {
+                configNode = objectMapper.createObjectNode();
+            }
+            configNode.put("czgts_cookie", cookie);
+            objectMapper.writerWithDefaultPrettyPrinter().writeValue(configFile, configNode);
+            log.info("成功将抓取到的 czgts_cookie 保存至 config.json，后续将彻底脱离浏览器运行！");
+        } catch (Exception e) {
+            log.warn("无法将 Cookie 保存到 config.json: {}", e.getMessage());
+        }
+    }
+
     @Override
     public List<HotNewsDto> fetchHotNewsByKeyword(String keyword, String tab, String platform, String contentType, String domains, String publishTime, String sort) {
         String url = resolveUrl(tab);
         log.info("Fetching hot news via browser from: {} filters: platform={}, contentType={}, domains={}, publishTime={}, sort={}", url, platform, contentType, domains, publishTime, sort);
         Map<String, Object> filters = new HashMap<>();
-        if (platform != null && !platform.isEmpty()) filters.put("platform", platform);
+        if (platform != null && !platform.isEmpty()) filters.put("mediaPlatform", platform);
         if (contentType != null && !contentType.isEmpty()) filters.put("contentType", contentType);
         if (domains != null && !domains.isEmpty()) filters.put("domains", domains);
         if (publishTime != null && !publishTime.isEmpty()) filters.put("publishTime", publishTime);
         if (sort != null && !sort.isEmpty()) filters.put("sort", sort);
         if (keyword != null && !keyword.trim().isEmpty()) filters.put("keyword", keyword.trim());
-        String jsonOutput;
+        if (tab != null && !tab.isEmpty()) filters.put("tab", tab);
+        String jsonOutput = null;
         try {
-            jsonOutput = interactiveBrowserService.getHotspotTableFromPage(url, filters);
+            // 优先从 config.json 获取 Cookie，一旦有了就真正实现彻底脱离浏览器！
+            String cookie = getCookieFromConfig();
+
+            // 如果 config.json 里没有，尝试去持久化浏览器里拿，并且如果连浏览器都没有就打开 /v1/home 让用户手动扫码登录
+            if (cookie == null || cookie.trim().isEmpty()) {
+                log.info("未能在 config.json 找到 Cookie，正在唤起浏览器检测并要求登录...");
+                cookie = interactiveBrowserService.loginAndGetCzgtsCookie();
+                if (cookie != null && !cookie.trim().isEmpty()) {
+                    // 如果浏览器登录成功拿到 Cookie 返回，保存到 config.json
+                    saveCookieToConfig(cookie);
+                }
+            }
+
+            if (cookie == null || cookie.trim().isEmpty()) {
+                log.warn("等待登录超时或未完成操作。降级为 AI 生成...");
+                return aiFallbackService.fetchHotNewsByKeyword(keyword, tab, platform, contentType, domains, publishTime, sort);
+            } else {
+                log.info("提取到 czgts_cookie，直接使用 Python 极速接口获取热点...");
+                
+                // 克隆一个专门用于传给 Python 的参数，避免污染原有的 filters 供 fallback 浏览器使用
+                Map<String, Object> pythonParams = new HashMap<>(filters);
+                pythonParams.put("czgts_cookie", cookie);
+                pythonParams.put("platform", "czgts_crawler"); // 这是 agent_master 用于分发的技能名
+                
+                SkillDiscoveryService.SkillMetadata meta = new SkillDiscoveryService.SkillMetadata();
+                meta.setPath(skillsPath);
+                
+                PythonSkillRunner.SkillExecutionResult skillResult = pythonSkillRunner.execute(meta, pythonParams);
+                if (skillResult != null && skillResult.isSuccess() && skillResult.getData() != null) {
+                    jsonOutput = objectMapper.writeValueAsString(skillResult.getData());
+                } else {
+                    // 如果有 Cookie 但 Python 还是失败了，说明是接口或者代码 Bug，不再降级到浏览器（防止弹出窗口）
+                    String errorMsg = skillResult != null ? skillResult.getMessage() : "Python 脚本返回空结果";
+                    log.error("Python 极速抓取异常: {}", errorMsg);
+                    throw new RuntimeException("Python 引擎报错: " + errorMsg);
+                }
+            }
         } catch (Exception e) {
-            log.warn("Browser fetch failed: {}. Falling back to AI generation.", e.getMessage());
+            log.warn("Python fetch failed: {}. Falling back to AI generation.", e.getMessage());
             return aiFallbackService.fetchHotNewsByKeyword(keyword, tab, platform, contentType, domains, publishTime, sort);
         }
         if (jsonOutput == null || jsonOutput.trim().isEmpty() || !jsonOutput.contains("[")) {
-            log.warn("Browser returned no table data. Falling back to AI generation.");
+            log.warn("Python returned no data. Falling back to AI generation.");
             return aiFallbackService.fetchHotNewsByKeyword(keyword, tab, platform, contentType, domains, publishTime, sort);
         }
         List<HotNewsDto> result = new ArrayList<>();
         try {
-            List<Map<String, Object>> rawList = objectMapper.readValue(jsonOutput, new TypeReference<>() {});
-            log.info("Parsed {} hotspot rows from page", rawList.size());
+            // Python脚本直接返回了 List<Map>，这里对应的就是Json数组
+            List<Map<String, Object>> rawList = objectMapper.readValue(jsonOutput, new TypeReference<List<Map<String, Object>>>() {});
+            log.info("Parsed {} records from pure API data.", rawList.size());
             for (Map<String, Object> raw : rawList) {
                 HotNewsDto dto = mapTableRowToDto(raw, keyword, url);
                 if (dto.getTitle() != null && !dto.getTitle().isEmpty()) {
