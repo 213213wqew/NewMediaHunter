@@ -11,7 +11,15 @@
         </div>
         <div class="page-subtitle">追踪各平台分发任务的实时进度与结果，或继续编辑您的创作草稿</div>
       </div>
+      <div style="display: flex; gap: 8px;" v-if="currentTab === 'drafts'">
+        <button v-if="selectedDraftIds.length > 0" class="btn-text-danger delete-btn-batch" @click="handleDeleteDrafts">
+          🗑️ 批量删除 ({{ selectedDraftIds.length }})
+        </button>
+      </div>
       <div style="display: flex; gap: 8px;" v-if="currentTab === 'tasks'">
+        <button v-if="selectedTaskIds.length > 0" class="btn-text-danger delete-btn-batch" @click="handleDeleteTasks">
+          🗑️ 批量删除 ({{ selectedTaskIds.length }})
+        </button>
         <span class="badge badge-success"><span class="badge-dot"></span>成功 {{ successCount }}</span>
         <span class="badge badge-warning"><span class="badge-dot"></span>进行中 {{ loadingCount }}</span>
         <span class="badge badge-danger"><span class="badge-dot"></span>失败 {{ errorCount }}</span>
@@ -23,8 +31,11 @@
       <table v-if="currentTab === 'tasks'">
         <thead>
           <tr>
+            <th style="width: 40px; text-align: center;">
+              <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
+            </th>
             <th>任务ID</th>
-            <th>文章ID</th>
+            <th>文章名</th>
             <th>账号ID</th>
             <th>进度</th>
             <th>结果</th>
@@ -33,8 +44,13 @@
         </thead>
         <tbody>
           <tr v-for="task in taskList" :key="task.id" class="task-row" @click="showDetails(task)">
+            <td style="text-align: center;" @click.stop>
+              <input type="checkbox" :value="task.id" v-model="selectedTaskIds" />
+            </td>
             <td style="color: var(--text-muted); font-family: monospace; font-size: 12px;">#{{ task.id }}</td>
-            <td style="color: var(--text-primary);">#{{ task.articleId }}</td>
+            <td style="color: var(--text-primary); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" :title="task.articleTitle || ('#' + task.articleId)">
+              {{ task.articleTitle || ('#' + task.articleId) }}
+            </td>
             <td style="color: var(--text-secondary);">Account #{{ task.accountId }}</td>
             <td style="min-width: 140px;">
               <div style="display: flex; align-items: center; gap: 8px;">
@@ -56,7 +72,7 @@
               </span>
             </td>
             <td style="color: var(--text-muted); font-size: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-              {{ task.errorMessage || '正常执行中...' }}
+              {{ task.errorMessage || (task.publishStatus === 3 ? '执行完毕' : '正常执行中...') }}
             </td>
           </tr>
           <tr v-if="taskList.length === 0">
@@ -75,6 +91,9 @@
       <table v-else>
         <thead>
           <tr>
+            <th style="width: 40px; text-align: center;">
+              <input type="checkbox" :checked="isAllDraftsSelected" @change="toggleSelectAllDrafts" />
+            </th>
             <th>文稿ID</th>
             <th>标题</th>
             <th>状态</th>
@@ -84,6 +103,9 @@
         </thead>
         <tbody>
           <tr v-for="draft in draftList" :key="draft.id">
+            <td style="text-align: center;" @click.stop>
+              <input type="checkbox" :value="draft.id" v-model="selectedDraftIds" />
+            </td>
             <td style="color: var(--text-muted); font-family: monospace; font-size: 12px;">#{{ draft.id }}</td>
             <td style="font-weight: 500; color: var(--text-primary); max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ draft.title }}</td>
             <td>
@@ -98,7 +120,7 @@
             </td>
           </tr>
           <tr v-if="draftList.length === 0">
-            <td colspan="5" style="text-align: center; padding: 40px; color: var(--text-muted);">暂无文稿内容</td>
+            <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">暂无文稿内容</td>
           </tr>
         </tbody>
       </table>
@@ -153,7 +175,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, onUnmounted } from 'vue';
 import { getTaskList, getTaskLogs } from '../../api/publish';
-import { getArticleList, deleteArticle } from '../../api/article';
+import { getArticleList, deleteArticle, deleteArticles } from '../../api/article';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { PublishTask, PublishLog, Article } from '../../types';
 
@@ -163,8 +185,37 @@ const draftList = ref<Article[]>([]);
 const loading = ref(false);
 const timer = ref<any>(null);
 
+// 批量选择区域
+const selectedTaskIds = ref<number[]>([]);
+const isAllSelected = computed(() => {
+  return taskList.value.length > 0 && selectedTaskIds.value.length === taskList.value.length;
+});
+const toggleSelectAll = (e: Event) => {
+  const checked = (e.target as HTMLInputElement).checked;
+  if (checked) {
+    selectedTaskIds.value = taskList.value.map(t => t.id);
+  } else {
+    selectedTaskIds.value = [];
+  }
+};
+
+// 文稿批量选择区域
+const selectedDraftIds = ref<number[]>([]);
+const isAllDraftsSelected = computed(() => {
+  return draftList.value.length > 0 && selectedDraftIds.value.length === draftList.value.length;
+});
+const toggleSelectAllDrafts = (e: Event) => {
+  const checked = (e.target as HTMLInputElement).checked;
+  if (checked) {
+    selectedDraftIds.value = draftList.value.map(d => d.id!);
+  } else {
+    selectedDraftIds.value = [];
+  }
+};
+
 // 详情抽屉状态
 const drawerVisible = ref(false);
+import { deleteTasks } from '../../api/publish';
 const selectedTask = ref<PublishTask | null>(null);
 const logs = ref<PublishLog[]>([]);
 const loadingLogs = ref(false);
@@ -203,6 +254,50 @@ const handleDeleteDraft = async (id: number) => {
     if (err !== 'cancel') {
       ElMessage.error('删除失败');
     }
+  }
+};
+
+const handleDeleteDrafts = async () => {
+  if (selectedDraftIds.value.length === 0) return;
+  try {
+    await ElMessageBox.confirm(`确定要删除选中的 ${selectedDraftIds.value.length} 份文稿吗？删除后无法恢复。`, '批量删除', {
+      type: 'warning',
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消'
+    });
+    loading.value = true;
+    await deleteArticles(selectedDraftIds.value);
+    ElMessage.success('文稿已批量删除');
+    selectedDraftIds.value = []; // 清空选中
+    await loadData();
+  } catch (err) {
+    if (err !== 'cancel') {
+      ElMessage.error('删除文稿失败');
+    }
+  } finally {
+    loading.value = false;
+  }
+};
+
+const handleDeleteTasks = async () => {
+  if (selectedTaskIds.value.length === 0) return;
+  try {
+    await ElMessageBox.confirm(`确定要删除选中的 ${selectedTaskIds.value.length} 条发文记录吗？删除后无法恢复。`, '批量删除', {
+      type: 'warning',
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消'
+    });
+    loading.value = true;
+    await deleteTasks(selectedTaskIds.value);
+    ElMessage.success('发文记录已批量删除');
+    selectedTaskIds.value = []; // 清空选中
+    await loadData();
+  } catch (err) {
+    if (err !== 'cancel') {
+      ElMessage.error('删除记录失败');
+    }
+  } finally {
+    loading.value = false;
   }
 };
 

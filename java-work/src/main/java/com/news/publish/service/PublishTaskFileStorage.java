@@ -22,7 +22,11 @@ public interface PublishTaskFileStorage {
     /** 所有带批次的待处理任务(0)，用于调度时按账号取下一个 */
     List<PublishTask> findPendingBatchTasks();
 
+    List<PublishTask> findByBatchId(Long batchId);
+
     Optional<PublishTask> findById(Long id);
 
     PublishTask save(PublishTask task);
+    
+    void deleteById(Long id);
 }

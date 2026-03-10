@@ -45,7 +45,7 @@ public interface AIService {
     /**
      * 根据内容深度语义匹配多张配图
      */
-    List<String> matchParagraphImages(String content);
+
     /**
      * 万能网页抓取与结构化提取 (RAG 机制)
      * @param url 要抓取的任意网页URL (需带状态则走 InteractiveBrowserService)

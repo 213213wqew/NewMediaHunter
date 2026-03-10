@@ -33,4 +33,9 @@ public class ArticleController {
     public void deleteArticle(@PathVariable Long id) {
         articleService.deleteArticle(id);
     }
+
+    @DeleteMapping("/batch")
+    public void deleteArticles(@RequestBody List<Long> ids) {
+        articleService.deleteArticles(ids);
+    }
 }

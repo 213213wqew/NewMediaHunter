@@ -25,8 +25,8 @@ public class VideoBatchScheduler {
     private final Executor executor;
     private final BatchTaskRunner taskRunner;
 
-    @Value("${publish.batch.max-concurrent-accounts:9}")
-    private int maxConcurrentAccounts = 9;
+    @Value("${publish.batch.max-concurrent-accounts:8}")
+    private int maxConcurrentAccounts = 8;
 
     private final Set<Long> runningAccountIds = ConcurrentHashMap.newKeySet();
     private final Object scheduleLock = new Object();

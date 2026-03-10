@@ -96,11 +96,6 @@ public class AIController {
         return Map.of("content", result != null ? result : "", "images", images);
     }
 
-    @PostMapping("/suggest-images")
-    public List<String> suggestImages(@RequestBody Map<String, String> request) {
-        String content = request.get("content");
-        return aiService.matchParagraphImages(content);
-    }
 
     @PostMapping("/scrape-analyze")
     public Map<String, String> scrapeAndAnalyze(@RequestBody Map<String, String> request) {

@@ -79,15 +79,6 @@ public class MockAIServiceImpl implements AIService {
                + "\n<p><em>(润色说明：优化了关键词表达，增强了阅读冲击力)</em></p>";
     }
 
-    @Override
-    public List<String> matchParagraphImages(String content) {
-        // 模拟从正文提取关键词并匹配配图
-        return Arrays.asList(
-            "https://source.unsplash.com/800x450/?office,business",
-            "https://source.unsplash.com/800x450/?technology,city",
-            "https://source.unsplash.com/800x450/?teamwork,abstract"
-        );
-    }
 
     @Override
     public String scrapeAndAnalyze(String url, String extractionPrompt) {

@@ -58,12 +58,14 @@ export interface MediaResource {
 export interface PublishTask {
     id: number;
     articleId: number;
+    articleTitle?: string;
     accountId: number;
     publishStatus: number; // 0-待处理, 1-排号中, 2-发布中, 3-成功, 4-失败
     platformArticleUrl?: string;
     errorMessage?: string;
     createTime: string;
     scheduledTime?: string;
+    batchId?: number;
 }
 
 export interface ChartData {

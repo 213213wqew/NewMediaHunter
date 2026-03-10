@@ -23,10 +23,24 @@ export function getTaskList() {
 }
 
 /**
+ * 批量删除发布任务
+ */
+export function deleteTasks(taskIds: number[]) {
+    return request.delete('/publish/tasks', { data: taskIds });
+}
+
+/**
  * 获取单个任务状态
  */
 export function getTaskStatus(taskId: number) {
     return request.get<PublishTask>(`/publish/tasks/${taskId}`);
+}
+
+/**
+ * 获取特定批次的所有任务
+ */
+export function getBatchTasks(batchId: number) {
+    return request.get<PublishTask[]>(`/publish/batch/${batchId}`);
 }
 
 /**

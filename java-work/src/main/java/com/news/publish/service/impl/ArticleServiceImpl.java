@@ -40,14 +40,31 @@ public class ArticleServiceImpl implements ArticleService {
 
     @Override
     public List<Article> getAllArticles() {
+        List<Article> articles;
         if (UserContext.isAdmin()) {
-            return articleFileStorage.findAll();
+            articles = articleFileStorage.findAll();
+        } else {
+            articles = articleFileStorage.findByUserId(UserContext.getUserId());
         }
-        return articleFileStorage.findByUserId(UserContext.getUserId());
+        // 按最后更新时间或 ID 倒序排列（最新的在最上面）
+        articles.sort((a, b) -> {
+            if (a.getCreateTime() != null && b.getCreateTime() != null) {
+                return b.getCreateTime().compareTo(a.getCreateTime());
+            }
+            return Long.compare(b.getId() != null ? b.getId() : 0, a.getId() != null ? a.getId() : 0);
+        });
+        return articles;
     }
 
     @Override
     public void deleteArticle(Long id) {
         articleFileStorage.deleteById(id);
+    }
+
+    @Override
+    public void deleteArticles(List<Long> ids) {
+        if (ids != null) {
+            ids.forEach(this::deleteArticle);
+        }
     }
 }

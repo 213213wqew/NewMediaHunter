@@ -88,6 +88,7 @@ public class PublishServiceImpl implements PublishService {
         }
 
         List<PublishTask> tasks = new ArrayList<>();
+        Long batchId = System.currentTimeMillis(); // 赋予批次 ID，使其进入受控并行调度
         for (Long accountId : request.getAccountIds()) {
             Account account = accountService.getById(accountId)
                     .orElseThrow(() -> new RuntimeException("账号不存在"));
@@ -101,11 +102,13 @@ public class PublishServiceImpl implements PublishService {
             task.setUserId(UserContext.getUserId());
             task.setPublishStatus(0); // 待处理
             task.setScheduledTime(request.getScheduledTime());
+            task.setBatchId(batchId); // 关联批次
             tasks.add(taskFileStorage.save(task));
-            
-            if (request.getScheduledTime() == null || request.getScheduledTime().isBefore(LocalDateTime.now())) {
-                videoBatchScheduler.trySchedule();
-            }
+        }
+
+        // 所有任务持久化完成后，统一触发一次调度，确保调度器能看见所有待处理任务
+        if (request.getScheduledTime() == null || request.getScheduledTime().isBefore(LocalDateTime.now())) {
+            videoBatchScheduler.trySchedule();
         }
         return tasks;
     }
@@ -265,10 +268,33 @@ public class PublishServiceImpl implements PublishService {
 
     @Override
     public List<PublishTask> getAllTasks() {
+        List<PublishTask> tasks;
         if (UserContext.isAdmin()) {
-            return taskFileStorage.findAll();
+            tasks = taskFileStorage.findAll();
+        } else {
+            tasks = taskFileStorage.findByUserId(UserContext.getUserId());
         }
-        return taskFileStorage.findByUserId(UserContext.getUserId());
+        
+        // 倒序排列（最新的在前）
+        tasks.sort(Comparator.comparing(PublishTask::getId).reversed());
+        
+        // 注入文章标题
+        tasks.forEach(task -> {
+            articleFileStorage.findById(task.getArticleId())
+                .ifPresent(article -> task.setArticleTitle(article.getTitle()));
+        });
+        
+        return tasks;
+    }
+
+    @Override
+    public List<PublishTask> getTasksByBatchId(Long batchId) {
+        List<PublishTask> tasks = taskFileStorage.findByBatchId(batchId);
+        if (UserContext.isAdmin()) return tasks;
+        Long userId = UserContext.getUserId();
+        return tasks.stream()
+                .filter(t -> userId.equals(t.getUserId()))
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -353,6 +379,22 @@ public class PublishServiceImpl implements PublishService {
         } catch (Exception e) {
             log.warn("查询发布日志失败（可能未使用数据库）: {}", e.getMessage());
             return List.of();
+        }
+    }
+
+    @Override
+    public void deleteTasks(List<Long> taskIds) {
+        if (UserContext.isAdmin()) {
+             taskIds.forEach(taskFileStorage::deleteById);
+        } else {
+             Long userId = UserContext.getUserId();
+             taskIds.forEach(id -> {
+                 taskFileStorage.findById(id).ifPresent(task -> {
+                     if (userId.equals(task.getUserId())) {
+                         taskFileStorage.deleteById(id);
+                     }
+                 });
+             });
         }
     }
 }

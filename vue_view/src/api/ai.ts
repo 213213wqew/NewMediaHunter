@@ -54,9 +54,7 @@ export const polishArticle = (content: string, specId?: number | null): Promise<
     return request.post('/ai/polish', { content, specId });
 };
 
-export const suggestImages = (content: string): Promise<string[]> => {
-    return request.post('/ai/suggest-images', { content });
-};
+
 
 export const syncPlatformTasks = (platKey: string): Promise<{ success: boolean; count: number; message?: string }> => {
     return request.post(`/ai/platforms/${platKey}/sync-tasks`);

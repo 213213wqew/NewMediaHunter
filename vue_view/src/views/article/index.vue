@@ -57,14 +57,6 @@
               >
                 🔍 对比原文
               </button>
-              <button 
-                class="btn btn-ghost" 
-                :disabled="aiWriting || !valueHtml" 
-                @click="handleAiSmartImages"
-                style="margin-left: 10px; border: 1px solid rgba(255,255,255,0.1)"
-              >
-                🖼️ 智能插图
-              </button>
             </div>
           </div>
         </div>
@@ -397,16 +389,22 @@ import { useRoute } from 'vue-router';
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue';
 import { getAccountList } from '../../api/account';
 import { saveArticle, getArticleList, getArticle } from '../../api/article';
-import { submitPublishTask, getAiSummary, getAiSuggestedTitles, getAiTags, getAiCategory } from '../../api/publish';
+import { 
+    submitPublishTask, 
+    getAiSummary, 
+    getAiSuggestedTitles, 
+    getAiTags, 
+    getAiCategory,
+    getBatchTasks 
+} from '../../api/publish';
 import { getPlatformList } from '../../api/platform';
 import { 
     fetchHotNews, 
     fetchArticleContent, 
-    generateArticle, 
+    generateArticle,
     matchImage, 
     polishArticle, 
-    suggestImages, 
-    syncPlatformTasks, 
+    syncPlatformTasks,
     getPlatformTasks, 
     matchHotTopics,
     generateImage,
@@ -1232,35 +1230,6 @@ const applyPolish = async () => {
   ElMessage.success('已应用所选版本');
 
   // 采纳后自动保存，确保用户润色的内容不丢失
-  await handleSave(0);
-};
-
-const handleAiSmartImages = async () => {
-  if (!valueHtml.value) return;
-  aiLoading.value = true;
-  try {
-    const images = await suggestImages(valueHtml.value);
-    if (!images || images.length === 0) return;
-    
-    // 简单的智能插入逻辑：寻找 h2 标签并在其后插入图片
-    let content = valueHtml.value;
-    images.forEach(url => {
-      const imgHtml = `<p style="text-align:center;"><img src="${url}" style="max-width:100%; border-radius:8px; margin:15px 0;" /></p>`;
-      // 找第一个未被处理过的 h2
-      const h2Match = content.match(/<\/h2>/);
-      if (h2Match) {
-         content = content.replace(/<\/h2>/, `</h2>${imgHtml}`);
-      } else {
-         content += imgHtml;
-      }
-    });
-    valueHtml.value = content;
-    ElMessage.success('已根据文章内容智能匹配并插入配图');
-  } catch (err) {
-    ElMessage.error('插图推荐失败');
-  } finally {
-    aiLoading.value = false;
-  }
 };
 
 const handleSimulationPreview = () => {
@@ -1303,14 +1272,40 @@ const handleSave = async (status: number) => {
   }
 };
 
+const pollBatchStatus = async (batchId: number) => {
+  const check = async () => {
+    try {
+      const tasks = await getBatchTasks(batchId);
+      if (!tasks || tasks.length === 0) {
+        publishing.value = false;
+        return;
+      }
+      // publishStatus: 0-待处理, 1-排号中, 2-发布中, 3-成功, 4-失败
+      const allFinished = tasks.every(t => t.publishStatus === 3 || t.publishStatus === 4);
+      
+      if (allFinished) {
+        publishing.value = false;
+        loadMyArticles();
+        ElMessage.success('本批次所有同步任务已处理完毕');
+      } else {
+        // 每 3 秒轮询一次
+        setTimeout(check, 3000);
+      }
+    } catch (e) {
+      console.error('轮询批次状态失败:', e);
+      publishing.value = false;
+      ElMessage.error('状态轮询异常，已解除按钮锁定');
+    }
+  };
+  check();
+};
+
 const handlePublish = async () => {
   if (form.selectedAccounts.length === 0) return ElMessage.warning('请选择至少一个发布账号');
   
-  // 锁定按钮，防止重复点击
   publishing.value = true;
   
   try {
-    // 发布前自动保存当前内容与平台设置（含封面），确保后端用到的是最新选择
     ElMessage.info('正在保存当前内容并划拨发布任务...');
     const article = await handleSave(1);
     if (!article) {
@@ -1318,7 +1313,6 @@ const handlePublish = async () => {
        return;
     }
 
-    // 提交发布请求
     const res = await submitPublishTask({
         articleId: article.id,
         accountIds: form.selectedAccounts,
@@ -1326,22 +1320,26 @@ const handlePublish = async () => {
     });
     
     if (res && res.length > 0) {
+        const batchId = res[0]?.batchId;
         ElMessage.success({
-          message: `成功划拨 ${res.length} 个任务！后台正以 8 线程受控并行发布，请在「发布任务」中查看进度。`,
-          duration: 5000,
-          showClose: true
+          message: `成功划拨 ${res.length} 个任务！系统正以平行 8 线程推进，完成后将自动释放按钮状态...`,
+          duration: 4000
         });
+
+        if (batchId) {
+            pollBatchStatus(batchId);
+        } else {
+            // 兜底释放
+            setTimeout(() => { publishing.value = false; }, 3000);
+        }
     } else {
         ElMessage.warning('未生成有效的发布任务记录');
+        publishing.value = false;
     }
   } catch (e) {
-    ElMessage.error('分发任务提交失败，请检查网络或后端服务');
+    ElMessage.error('分发任务提交失败');
+    publishing.value = false;
     console.error('Publish error:', e);
-  } finally {
-    // 延迟一秒释放锁定，确保 UI 反馈充分
-    setTimeout(() => {
-        publishing.value = false;
-    }, 1000);
   }
 };
 </script>

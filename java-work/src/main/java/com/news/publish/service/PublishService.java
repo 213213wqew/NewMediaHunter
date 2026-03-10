@@ -21,6 +21,8 @@ public interface PublishService {
      * @return 本批创建的任务列表
      */
     List<PublishTask> submitVideoBatch(VideoBatchPublishRequest request);
+    
+    void deleteTasks(List<Long> taskIds);
 
     /**
      * 异步执行单条发布任务 (供外部触发重试等)
@@ -32,6 +34,7 @@ public interface PublishService {
      */
     void runTaskSync(Long taskId);
     List<PublishTask> getAllTasks();
+    List<PublishTask> getTasksByBatchId(Long batchId);
     com.news.publish.model.dto.PublishStats getStatistics();
     List<com.news.publish.model.entity.PublishLog> getLogsByTaskId(Long taskId);
     PublishTask getTaskById(Long taskId);

@@ -42,6 +42,16 @@ public class PublishController {
         return publishService.getTaskById(taskId);
     }
 
+    @GetMapping("/batch/{batchId}")
+    public List<PublishTask> getBatchTasks(@PathVariable Long batchId) {
+        return publishService.getTasksByBatchId(batchId);
+    }
+
+    @DeleteMapping("/tasks")
+    public void deleteTasks(@RequestBody List<Long> taskIds) {
+        publishService.deleteTasks(taskIds);
+    }
+
     @GetMapping("/stats")
     public com.news.publish.model.dto.PublishStats getStats() {
         return publishService.getStatistics();

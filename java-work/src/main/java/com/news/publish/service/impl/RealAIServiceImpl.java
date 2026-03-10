@@ -510,22 +510,6 @@ public class RealAIServiceImpl implements AIService {
         return res;
     }
 
-    @Override
-    public List<String> matchParagraphImages(String content) {
-        // 修正：彻底解决插图推荐重复且不符的问题
-        // 方案：直接调用 AI 绘图描述生成接口，为文章生成三张专属的示意图
-        String stripped = content.replaceAll("<[^>]*>", "").trim();
-        if (stripped.length() > 500) stripped = stripped.substring(0, 500);
-        
-        // 提取文章标题或前两句作为生成依据
-        String kw = stripped.length() > 50 ? stripped.substring(0, 50) : stripped;
-        
-        return List.of(
-            autoMatchImage(kw + " cinemetic real photo high quality"),
-            autoMatchImage(kw + " detail news photography"),
-            autoMatchImage(kw + " wide angle view press")
-        );
-    }
 
     @Override
     public String scrapeAndAnalyze(String url, String extractionPrompt) {

@@ -28,3 +28,10 @@ export function getArticle(id: number) {
 export function deleteArticle(id: number) {
     return request.delete(`/article/${id}`);
 }
+
+/**
+ * 批量删除文章
+ */
+export function deleteArticles(ids: number[]) {
+    return request.delete('/article/batch', { data: ids });
+}

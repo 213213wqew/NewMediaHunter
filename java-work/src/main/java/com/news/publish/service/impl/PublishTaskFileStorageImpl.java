@@ -185,6 +185,15 @@ public class PublishTaskFileStorageImpl implements PublishTaskFileStorage {
     }
 
     @Override
+    public List<PublishTask> findByBatchId(Long batchId) {
+        if (batchId == null) return List.of();
+        return load().list.stream()
+                .filter(r -> batchId.equals(r.getBatchId()))
+                .map(PublishTaskFileStorageImpl::toEntity)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public Optional<PublishTask> findById(Long id) {
         if (id == null) return Optional.empty();
         return load().list.stream()
@@ -212,5 +221,15 @@ public class PublishTaskFileStorageImpl implements PublishTaskFileStorage {
         }
         save(holder);
         return task;
+    }
+
+    @Override
+    public void deleteById(Long id) {
+        if (id == null) return;
+        TasksHolder holder = load();
+        boolean removed = holder.list.removeIf(r -> id.equals(r.getId()));
+        if (removed) {
+            save(holder);
+        }
     }
 }

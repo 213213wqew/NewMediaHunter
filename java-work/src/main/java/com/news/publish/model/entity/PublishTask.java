@@ -39,6 +39,9 @@ public class PublishTask {
     /** 该账号在本批次中的任务序号（0,1,2...），用于按账号串行执行 */
     private Integer accountSequenceIndex;
 
+    @Transient
+    private String articleTitle;
+
     @PrePersist
     protected void onCreate() {
         createTime = LocalDateTime.now();
