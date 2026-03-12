@@ -17,6 +17,9 @@ vue_view/dist/
 skills/sessions/
 skills/tokens/
 
+# PyArmor 打包输出目录（加密技能与运行时，勿提交）
+skills_dist/
+
 # OS generated files
 .DS_Store
 Thumbs.db
