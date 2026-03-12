@@ -128,7 +128,14 @@ public class RealWorldHotNewsServiceImpl implements HotNewsService {
                 pythonParams.put("platform", "czgts_crawler"); // 这是 agent_master 用于分发的技能名
                 
                 SkillDiscoveryService.SkillMetadata meta = new SkillDiscoveryService.SkillMetadata();
-                meta.setPath(skillsPath);
+                // 自动适配打包后的目录结构：优先检查 skills/agent_master.py
+                File root = new File(skillsPath);
+                File nested = new File(root, "skills");
+                if (new File(nested, "agent_master.py").exists()) {
+                    meta.setPath(nested.getAbsolutePath());
+                } else {
+                    meta.setPath(root.getAbsolutePath());
+                }
                 
                 PythonSkillRunner.SkillExecutionResult skillResult = pythonSkillRunner.execute(meta, pythonParams);
                 if (skillResult != null && skillResult.isSuccess() && skillResult.getData() != null) {

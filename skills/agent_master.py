@@ -38,23 +38,36 @@ def run_master():
         print(f"DEBUG: Master 启动. command={command}, platform={platform}, account_id={account_id}, session_dir={session_dir}")
 
         result = None
-        # 优先使用 platforms/{platform}（登录/存 Token/注入 已拆分）
         if platform:
+            # 1. 尝试从 platforms 目录导入 (推荐：结构化)
             try:
-                mod = importlib.import_module("platforms." + platform)
+                mod_name = f"platforms.{platform}"
+                mod = importlib.import_module(mod_name)
                 if hasattr(mod, "execute"):
                     result = mod.execute(params, session_dir, CURRENT_DIR)
                     print(json.dumps(result, ensure_ascii=False))
                     return
             except ImportError:
                 pass
-        # 兼容：仍支持 sub_skills/{platform}.py（仅 execute(params, session_dir)）
+            
+            # 2. 尝试从 sub_skills 目录作为包成员导入
+            try:
+                mod_name = f"sub_skills.{platform}"
+                mod = importlib.import_module(mod_name)
+                if hasattr(mod, "execute"):
+                    result = mod.execute(params, session_dir)
+                    print(json.dumps(result, ensure_ascii=False))
+                    return
+            except ImportError:
+                pass
+
+        # 3. 兜底尝试：从 sys.path (包括 sub_skills 路径) 直接导入
         try:
             sub_skill = importlib.import_module(platform or "baijiahao")
             result = sub_skill.execute(params, session_dir)
             print(json.dumps(result, ensure_ascii=False))
-        except ImportError:
-            print(json.dumps({"success": False, "message": f"未找到平台技能: {platform}"}))
+        except ImportError as ie:
+            print(json.dumps({"success": False, "message": f"未找到平台技能: {platform} (已尝试 platforms/sub_skills/sys.path) 错误: {str(ie)}"}))
         except Exception as e:
             msg = str(e)
             if "Locked" in msg or "lock" in msg.lower():

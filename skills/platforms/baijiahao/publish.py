@@ -10,7 +10,32 @@ import time
 from playwright.sync_api import sync_playwright
 
 _ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", ".."))
-if _ROOT not in sys.path:
+
+def find_project_root_and_uploads(current_path):
+    """递归向上寻找包含 uploads 或 java-work 的真实根目录"""
+    curr = os.path.abspath(current_path)
+    # 最多向上找 5 层
+    for _ in range(5):
+        # 常见标识：包含 uploads 文件夹或者是 java-work 的同级
+        potentials = [
+            os.path.join(curr, "uploads"),
+            os.path.join(curr, "java-work", "uploads"),
+            os.path.join(os.path.dirname(curr), "uploads")
+        ]
+        for p in potentials:
+            if os.path.exists(p) and os.path.isdir(p):
+                return os.path.dirname(p) if "java-work" in p else curr, p
+        
+        parent = os.path.dirname(curr)
+        if parent == curr: break
+        curr = parent
+    return None, None
+
+_PROJ_ROOT, _UPLOADS_DIR = find_project_root_and_uploads(os.path.dirname(__file__))
+
+if _PROJ_ROOT and _PROJ_ROOT not in sys.path:
+    sys.path.insert(0, _PROJ_ROOT)
+elif _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 from core.inject import inject_cookies
@@ -125,13 +150,17 @@ def run(params: dict, session_dir: str, cookie_json_str: str) -> dict:
             
             uploads_dir = params.get("localUploadsDir", "")
             if not uploads_dir:
-                potential_root_uploads = os.path.abspath(os.path.join(_ROOT, "..", "uploads"))
-                if os.path.exists(potential_root_uploads):
-                    uploads_dir = potential_root_uploads
+                if _UPLOADS_DIR:
+                    uploads_dir = _UPLOADS_DIR
                 else:
-                    uploads_dir = os.path.abspath(os.path.join(_ROOT, "..", "java-work", "uploads"))
+                    potential_root_uploads = os.path.abspath(os.path.join(_ROOT, "..", "uploads"))
+                    if os.path.exists(potential_root_uploads):
+                        uploads_dir = potential_root_uploads
+                    else:
+                        uploads_dir = os.path.abspath(os.path.join(_ROOT, "..", "java-work", "uploads"))
             
-            print(f"DEBUG: 使用素材目录: {uploads_dir}")
+            uploads_dir = os.path.normpath(uploads_dir)
+            print(f"DEBUG: [PATH_INFO] 最终识别到的素材根目录: {uploads_dir}")
             
             import html
             img_urls = re.findall(r'src=[\'"]?([^\'"\s>]+)[\'"]?', content)
@@ -197,7 +226,7 @@ def run(params: dict, session_dir: str, cookie_json_str: str) -> dict:
                                         with open(local_path, "wb") as f:
                                             f.write(img_data)
                                         log_temp_file(uploads_dir, local_path)
-                                        print(f"DEBUG: 成功通过 Context 原生下载穿透防盗链: {local_path}")
+                                        print(f"DEBUG: [PATH_INFO] 图片已下载并保存至: {local_path}")
                                     else:
                                         print(f"DEBUG: 获取到的图片体积异常太小 ({len(img_data)} bytes)，可能被限流拦截")
                                 else:

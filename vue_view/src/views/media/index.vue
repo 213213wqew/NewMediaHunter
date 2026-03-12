@@ -102,6 +102,7 @@ import { ref, onMounted, computed } from 'vue';
 import { getMediaList, deleteMedia } from '../../api/media';
 import request from '../../utils/request';
 import type { MediaResource } from '../../types';
+import { ElMessage, ElMessageBox } from 'element-plus';
 
 const mediaList = ref<MediaResource[]>([]);
 const currentFilter = ref('all');
@@ -159,37 +160,59 @@ const handleCardClick = (item: MediaResource) => {
 };
 
 const handleDelete = async (id: number) => {
-  if (!confirm('确定要永久删除该素材吗？')) return;
   try {
+    await ElMessageBox.confirm('确定要删除该素材吗？删除后无法恢复。', '警告', {
+      type: 'warning',
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消'
+    });
     await deleteMedia(id);
-    await loadMedia();
+    ElMessage.success('素材已删除');
+    loadMedia();
   } catch (err) {
-    alert('删除失败');
+    if (err !== 'cancel') {
+      ElMessage.error('删除失败');
+    }
   }
 };
 
 const handleBatchDelete = async () => {
   const count = selectedIds.value.size;
   if (count === 0) return;
-  if (!confirm(`确定要永久删除这 ${count} 个素材吗？`)) return;
-  
   try {
+    await ElMessageBox.confirm(`确定要删除选中的 ${count} 个素材吗？删除后无法恢复。`, '批量删除', {
+      type: 'warning',
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消'
+    });
+    
     await request.post('/media/batch-delete', Array.from(selectedIds.value));
     selectedIds.value.clear();
     isSelectionMode.value = false;
+    ElMessage.success('选定素材已批量删除');
     await loadMedia();
   } catch (err) {
-    alert('批量删除失败');
+    if (err !== 'cancel') {
+      ElMessage.error('批量删除失败');
+    }
   }
 };
 
 const handleDeleteAll = async () => {
-  if (!confirm('⚠️ 警告：这将永久删除您的所有素材且不可恢复！确定要清空吗？')) return;
   try {
+    await ElMessageBox.confirm('⚠️ 警告：这将永久删除素材中心的所有资源且不可恢复！确定要清空吗？', '极限警告', {
+      type: 'error',
+      confirmButtonText: '确定彻底清空',
+      cancelButtonText: '取消',
+      confirmButtonClass: 'el-button--danger'
+    });
     await request.post('/media/delete-all');
+    ElMessage.success('素材中心已清空');
     await loadMedia();
   } catch (err) {
-    alert('清空失败');
+    if (err !== 'cancel') {
+      ElMessage.error('清空失败');
+    }
   }
 };
 
@@ -204,9 +227,10 @@ const handleUpload = async (e: Event) => {
     await request.post('/file/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
+    ElMessage.success('素材上传成功');
     await loadMedia();
   } catch (err) {
-    alert('上传失败');
+    ElMessage.error('上传失败');
   }
 };
 </script>

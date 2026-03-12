@@ -2,9 +2,15 @@ spring:
   # datasource: 已被移除，彻底断开 MySQL
   # jpa: 已被移除
 
-
 server:
   port: 8080
+
+# 技能目录（与 JAR 同目录时用相对路径；也可改为绝对路径如 D:/app/skills）
+app:
+  #  skills-path: E:/java-Project/新闻发布程序/skills
+   skills-path: skills_dist
+  # 内置 Python 路径：部署时若存在 python_embedded 目录则无需用户安装 Python。相对路径相对于运行 JAR 的当前目录
+   python-path: ./python_embedded/python.exe
 
 browser:
   headless: false
